@@ -185,6 +185,7 @@ src/
 | `ARCHITECTURE.md` | Both | This file — API contract, system design |
 | `FRONTEND-REFERENCE.md` | Teammate 1 🎨 | Vue, Motion, KaTeX code snippets |
 | `BACKEND-REFERENCE.md` | Teammate 2 ⚙️ | Python, FastAPI, Gemini code snippets |
+| `FIGMA-TO-CODE.md` | Teammate 1 🎨 | Figma → Vue workflow, Tailwind mapping, animation sequence |
 | `TESTING.md` | Both | Test cases, edge cases, automated tests |
 
 ---

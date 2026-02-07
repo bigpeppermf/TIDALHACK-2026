@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-const stages = [
+type Stage = { text: string; duration: number }
+
+const stages: [Stage, ...Stage[]] = [
   { text: 'Reading your handwriting...', duration: 1800 },
   { text: 'Recognizing equations...', duration: 2200 },
   { text: 'Converting to LaTeX...', duration: 2000 },
@@ -11,6 +13,9 @@ const stages = [
 const stageIndex = ref(0)
 const dots = ref('')
 const rotation = ref(0)
+const currentStage = computed<Stage>(
+  () => stages[stageIndex.value] ?? stages[stages.length - 1]!,
+)
 
 const timers: ReturnType<typeof setTimeout>[] = []
 let dotsInterval: ReturnType<typeof setInterval> | null = null
@@ -21,7 +26,7 @@ function advanceStage() {
   const timer = setTimeout(() => {
     stageIndex.value = Math.min(stageIndex.value + 1, stages.length - 1)
     advanceStage()
-  }, stages[stageIndex.value].duration)
+  }, currentStage.value.duration)
   timers.push(timer)
 }
 
@@ -87,7 +92,7 @@ function progressWidth(): string {
     <!-- Status text -->
     <div class="text-center">
       <p class="text-lg font-medium text-foreground">
-        {{ stages[stageIndex].text }}
+        {{ currentStage.text }}
       </p>
       <p class="mt-1 font-mono text-sm text-muted-foreground">
         Processing{{ dots }}

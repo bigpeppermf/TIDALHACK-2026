@@ -1,0 +1,19 @@
+
+Architecture:
+
+
+Browser
+  ↓ upload
+FastAPI backend
+  ↓
+Temp PDF file
+  ↓
+pdf2image (server)
+  ↓
+PNG pages
+  ↓
+Gemini API
+  ↓
+LaTeX + PDF output
+  ↓
+Browser

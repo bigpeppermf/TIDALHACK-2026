@@ -14,7 +14,13 @@ npm create vue@latest
 cd frontend
 npm install
 npm install motion-v katex
-npm install -D tailwindcss
+npm install -D tailwindcss @tailwindcss/vite
+
+# Initialize shadcn-vue (sets up cn utility, configures paths)
+npx shadcn-vue@latest init
+
+# Add the components you'll actually use
+npx shadcn-vue@latest add button card input textarea sonner
 ```
 
 Node.js requirement: `^20.19.0 || >=22.12.0`
@@ -191,6 +197,140 @@ const rendered = computed(() => {
 
 ---
 
+## shadcn-vue — Pre-Built UI Components
+
+shadcn-vue gives you polished, accessible components you own (copied into your project, not a dependency).
+
+### Setup
+
+```bash
+# Already done in scaffold step — just for reference
+npx shadcn-vue@latest init
+# Prompts: style (New York or Default), base color, CSS variables (Yes)
+```
+
+Components are installed into `src/frontend/src/components/ui/`.
+
+### Button (variants: default, outline, secondary, ghost, destructive)
+
+```vue
+<script setup lang="ts">
+import { Button } from '@/components/ui/button'
+</script>
+
+<template>
+  <!-- Primary CTA -->
+  <Button>Convert to LaTeX</Button>
+
+  <!-- Secondary action -->
+  <Button variant="outline">Download .tex</Button>
+
+  <!-- Danger -->
+  <Button variant="destructive">Clear</Button>
+
+  <!-- Sizes -->
+  <Button size="sm">Small</Button>
+  <Button size="lg">Large</Button>
+  <Button size="icon">✏️</Button>
+</template>
+```
+
+### Card (for result panels, landing page sections)
+
+```vue
+<script setup lang="ts">
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+</script>
+
+<template>
+  <Card>
+    <CardHeader>
+      <CardTitle>LaTeX Output</CardTitle>
+      <CardDescription>Converted from your handwriting</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <LatexPreview :latex="latex" />
+    </CardContent>
+    <CardFooter class="flex gap-2">
+      <Button @click="copy">Copy</Button>
+      <Button variant="outline" @click="download">Download .tex</Button>
+    </CardFooter>
+  </Card>
+</template>
+```
+
+### Input & Textarea
+
+```vue
+<script setup lang="ts">
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+</script>
+
+<template>
+  <!-- Filename input for export -->
+  <Input v-model="filename" placeholder="my_notes" />
+
+  <!-- LaTeX editor (alternative to CodeMirror) -->
+  <Textarea
+    v-model="latex"
+    class="font-mono text-sm min-h-[300px]"
+    placeholder="LaTeX will appear here..."
+  />
+</template>
+```
+
+### Sonner Toast (for "Copied!" feedback)
+
+```vue
+<!-- Add Toaster once in App.vue -->
+<script setup lang="ts">
+import { Toaster } from '@/components/ui/sonner'
+</script>
+
+<template>
+  <RouterView />
+  <Toaster />
+</template>
+```
+
+```vue
+<!-- Then use toast() anywhere -->
+<script setup lang="ts">
+import { toast } from 'vue-sonner'
+import { Button } from '@/components/ui/button'
+
+function copyLatex() {
+  navigator.clipboard.writeText(latex.value)
+  toast('Copied to clipboard!', {
+    description: 'LaTeX source is ready to paste',
+  })
+}
+</script>
+
+<template>
+  <Button @click="copyLatex">📋 Copy LaTeX</Button>
+</template>
+```
+
+### Adding More Components On-The-Fly
+
+```bash
+# Need a dropdown for context selector? Just add it:
+npx shadcn-vue@latest add dropdown-menu
+
+# Need a dialog for export options?
+npx shadcn-vue@latest add dialog
+
+# Need a tooltip for icon buttons?
+npx shadcn-vue@latest add tooltip
+```
+
+> **Hackathon tip:** Only `add` components as you need them. Don't install everything upfront.
+
+---
+
 ## useConvert Composable
 
 ```typescript
@@ -345,12 +485,18 @@ export function useExport() {
     "vue": "^3.5.0",
     "vue-router": "^4.4.0",
     "motion-v": "latest",
-    "katex": "^0.16.0"
+    "katex": "^0.16.0",
+    "reka-ui": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "tailwind-merge": "latest",
+    "vue-sonner": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
     "vite": "^6.0.0",
     "tailwindcss": "^4.0.0",
+    "@tailwindcss/vite": "latest",
     "typescript": "^5.5.0"
   }
 }
@@ -365,3 +511,7 @@ export function useExport() {
 - KaTeX is for **preview only** — the real output is the raw `.tex` string
 - Test upload with a small jpeg first before handling edge cases
 - Tailwind makes hackathon styling 10x faster — don't write custom CSS
+- **shadcn-vue components are yours** — they live in `src/components/ui/`, edit them freely
+- Use shadcn `Button` for all buttons, `Card` for panels, `Textarea` for the LaTeX editor
+- Use Sonner `toast()` instead of building a custom toast — it's already styled
+- Wrap Motion animations **around** shadcn components: `<motion.div><Button>...</Button></motion.div>`

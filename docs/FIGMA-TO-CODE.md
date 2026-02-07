@@ -85,6 +85,10 @@ npm create vue@latest .
 
 npm install motion-v katex
 npm install -D @tailwindcss/vite
+
+# shadcn-vue: pre-built accessible components you own
+npx shadcn-vue@latest init
+npx shadcn-vue@latest add button card input textarea sonner
 ```
 
 ### Vite Config (Tailwind v4 Plugin)
@@ -126,12 +130,13 @@ npm run dev  # → http://localhost:5173
 
 ### The Hybrid Approach (Recommended)
 
-Combine **3 techniques** depending on the component:
+Combine **4 techniques** depending on the component:
 
 | Technique | Use For | Speed |
 |---|---|---|
-| **AI Generation** | Landing page hero, navbars, card layouts | ⚡ Fastest |
-| **Hand-build + Tailwind** | Upload zone, result split view, forms | 🔨 Most control |
+| **shadcn-vue Components** | Buttons, cards, inputs, toasts, dialogs | 🏆 Pre-styled + accessible |
+| **AI Generation** | Landing page hero, navbars, unique layouts | ⚡ Fastest for custom UI |
+| **Hand-build + Tailwind** | Upload zone, result split view | 🔨 Most control |
 | **Component Skeleton + Style** | Take existing skeletons from `FRONTEND-REFERENCE.md`, style to match Figma | 🎯 Best for ScribeTeX |
 
 ---
@@ -158,7 +163,72 @@ Combine **3 techniques** depending on the component:
 
 ---
 
-### Technique B: Hand-Build with Tailwind
+### Technique B: shadcn-vue Drop-In Components
+
+**When:** Buttons, form inputs, cards, toasts, dialogs — anything that's a standard UI pattern
+
+shadcn-vue gives you polished, accessible components that are **copied into your project** (not a node_modules dependency). Edit them freely.
+
+#### Which shadcn Components to Use for ScribeTeX
+
+| ScribeTeX Feature | shadcn Component | Why |
+|---|---|---|
+| "Convert" / "Copy" / "Download" buttons | `Button` | 6 variants, consistent styling |
+| Result panel wrapper | `Card` + `CardHeader` + `CardContent` + `CardFooter` | Structured layout with title/description |
+| LaTeX editor | `Textarea` | Styled, accessible, works with `v-model` |
+| Filename input (export) | `Input` | Consistent with the rest of the UI |
+| "Copied!" feedback | `Sonner` toast | No need to build custom toast |
+| Context selector (nice-to-have) | `DropdownMenu` | `npx shadcn-vue@latest add dropdown-menu` |
+| Export options (nice-to-have) | `Dialog` | `npx shadcn-vue@latest add dialog` |
+
+#### Usage Pattern
+
+```vue
+<script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'vue-sonner'
+
+function onCopy() {
+  navigator.clipboard.writeText(latex.value)
+  toast('Copied to clipboard!')
+}
+</script>
+
+<template>
+  <Card>
+    <CardHeader>
+      <CardTitle>LaTeX Output</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Textarea v-model="latex" class="font-mono min-h-[300px]" />
+    </CardContent>
+    <CardFooter class="gap-2">
+      <Button @click="onCopy">📋 Copy</Button>
+      <Button variant="outline" @click="download">
+        💾 Download .tex
+      </Button>
+    </CardFooter>
+  </Card>
+</template>
+```
+
+#### Combining shadcn + Motion
+
+Wrap Motion around shadcn components for animations:
+
+```vue
+<motion.div :whileHover="{ scale: 1.02 }" :whilePress="{ scale: 0.98 }">
+  <Button size="lg">Convert to LaTeX</Button>
+</motion.div>
+```
+
+> **Rule:** shadcn handles structure + styling, Motion handles animation. Don't fight the shadcn styles — enhance them with motion.
+
+---
+
+### Technique C: Hand-Build with Tailwind
 
 **When:** Core interactive components — upload zone, editor, preview
 
@@ -205,7 +275,7 @@ This is where you'll spend most of your time. Work from the skeletons in [FRONTE
 
 ---
 
-### Technique C: Use Your Existing Skeletons
+### Technique D: Use Your Existing Skeletons
 
 The [FRONTEND-REFERENCE.md](FRONTEND-REFERENCE.md) already has skeletons for every core component. Here's how to use them:
 
@@ -413,11 +483,25 @@ If you're behind schedule:
 
 ## Figma → Code Translation Examples
 
-### Example 1: Figma Button → Vue + Tailwind + Motion
+### Example 1: Figma Button → shadcn + Motion
 
 **Figma specs:** Blue fill (#3B82F6), 16px padding horizontal, 8px vertical, 8px border-radius, white text, 16px font, semibold
 
 ```vue
+<!-- Option A: shadcn Button (fastest — already styled) -->
+<script setup lang="ts">
+import { Button } from '@/components/ui/button'
+</script>
+
+<template>
+  <motion.div :whileHover="{ scale: 1.03 }" :whilePress="{ scale: 0.97 }">
+    <Button>Convert to LaTeX</Button>
+  </motion.div>
+</template>
+```
+
+```vue
+<!-- Option B: Hand-built with Tailwind (if you need full control) -->
 <motion.button
   :whileHover="{ scale: 1.03 }"
   :whilePress="{ scale: 0.97 }"
@@ -428,11 +512,31 @@ If you're behind schedule:
 </motion.button>
 ```
 
-### Example 2: Figma Card → Vue + Tailwind
+### Example 2: Figma Card → shadcn Card or Tailwind
 
 **Figma specs:** Dark surface (#1E1E2E), 24px padding, 16px border-radius, subtle shadow
 
 ```vue
+<!-- Option A: shadcn Card (structured, accessible) -->
+<script setup lang="ts">
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+</script>
+
+<template>
+  <Card>
+    <CardHeader>
+      <CardTitle>{{ title }}</CardTitle>
+      <CardDescription>{{ description }}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <slot />
+    </CardContent>
+  </Card>
+</template>
+```
+
+```vue
+<!-- Option B: Raw Tailwind (for custom layouts) -->
 <div class="bg-surface rounded-2xl p-6 shadow-lg">
   <h3 class="text-text font-semibold text-lg mb-2">{{ title }}</h3>
   <p class="text-text-muted text-sm">{{ description }}</p>
@@ -492,6 +596,8 @@ npm run build
 
 | Resource | URL |
 |---|---|
+| shadcn-vue docs | https://www.shadcn-vue.com/docs |
+| shadcn-vue components | https://www.shadcn-vue.com/docs/components |
 | Tailwind CSS docs | https://tailwindcss.com/docs |
 | Motion for Vue docs | https://motion.dev/docs/vue |
 | KaTeX supported functions | https://katex.org/docs/supported |

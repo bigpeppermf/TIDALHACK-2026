@@ -1,7 +1,7 @@
 # 🎨 Teammate 1 — Frontend Checklist
 
 > **Role:** Frontend Design & Development
-> **Stack:** Figma, Vue 3, Motion (motion-v), KaTeX, TailwindCSS
+> **Stack:** Figma, Vue 3, Motion (motion-v), shadcn-vue, KaTeX, TailwindCSS
 > **Work in:** `src/frontend/`
 > **Code ref:** `docs/FRONTEND-REFERENCE.md`
 
@@ -17,15 +17,17 @@
 
 ### Solo
 
-- [ ] Scaffold Vue 3 project: `npm create vue@latest` in `src/frontend/`
-- [ ] Pick: TypeScript ✅, Vue Router ✅, Pinia ❌, ESLint ❌
-- [ ] Install deps: `npm install motion-v katex`
-- [ ] Install dev deps: `npm install -D tailwindcss`
-- [ ] Configure Tailwind
-- [ ] Verify `npm run dev` serves on `:5173`
-- [ ] Create `VITE_API_URL=http://localhost:8000` in `src/frontend/.env`
-- [ ] Set up Vue Router: `/` → `HomePage.vue`, `/convert` → `ConvertPage.vue`
-- [ ] Create empty page shells for both routes
+- [x] Scaffold Vue 3 project: `npm create vue@latest` in `src/frontend/`
+- [x] Pick: TypeScript ✅, Vue Router ✅, Pinia ❌, ESLint ❌
+- [x] Install deps: `npm install motion-v katex`
+- [x] Install dev deps: `npm install -D tailwindcss @tailwindcss/vite`
+- [x] Initialize shadcn-vue: `npx shadcn-vue@latest init`
+- [x] Add core shadcn components: `npx shadcn-vue@latest add button card input textarea sonner`
+- [x] Configure Tailwind
+- [x] Verify `npm run dev` serves on `:5173`
+- [x] Create `VITE_API_URL=http://localhost:8000` in `src/frontend/.env`
+- [x] Set up Vue Router: `/` → `HomePage.vue`, `/convert` → `ConvertPage.vue`
+- [x] Create empty page shells for both routes
 - [ ] Start Figma designs: upload screen, loading screen, result screen
 
 **✅ Milestone:** Vue dev server running. Router works. Figma wireframes started.

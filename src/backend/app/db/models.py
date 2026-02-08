@@ -40,6 +40,16 @@ class User(Base):
         nullable=True
     )
 
+    full_name = Column(
+        Text,
+        nullable=True
+    )
+
+    avatar_url = Column(
+        Text,
+        nullable=True
+    )
+
     created_at = Column(
         TIMESTAMP,
         nullable=False

@@ -17,6 +17,21 @@ from app.routes import tex
 
 app = FastAPI()
 
+def _auth_env_ready() -> None:
+    if os.getenv("AUTH_DEV_BYPASS", "").lower() in {"1", "true", "yes"}:
+        return
+    if not os.getenv("CLERK_SECRET_KEY"):
+        raise RuntimeError("CLERK_SECRET_KEY is required for authentication")
+    if not os.getenv("CLERK_ISSUER"):
+        raise RuntimeError("CLERK_ISSUER is required for authentication")
+    if not os.getenv("CLERK_AUDIENCE"):
+        raise RuntimeError("CLERK_AUDIENCE is required for authentication")
+
+
+@app.on_event("startup")
+def _validate_auth_env():
+    _auth_env_ready()
+
 
 # CORS
 

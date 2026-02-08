@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import EmptyState from '@/components/dashboard/EmptyState.vue'
@@ -6,18 +7,23 @@ import ProjectRow from '@/components/dashboard/ProjectRow.vue'
 import { useProjects } from '@/composables/useProjects'
 
 const router = useRouter()
-const { projects } = useProjects()
+const ownerId = typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id')
+const { projects, ensureRemoteProjectsLoaded } = useProjects(ownerId)
+
+onMounted(() => {
+  void ensureRemoteProjectsLoaded()
+})
 
 function handleUpload() {
   router.push('/convert')
 }
 
 function handleView(_id: string) {
-  router.push('/convert')
+  router.push({ path: '/editor', query: { projectId: _id } })
 }
 
 function handleEdit(_id: string) {
-  router.push('/convert')
+  router.push({ path: '/editor', query: { projectId: _id } })
 }
 
 function handleRetry(_id: string) {

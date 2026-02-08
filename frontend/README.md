@@ -71,3 +71,9 @@ npm run test:e2e -- --debug
 ```sh
 npm run lint
 ```
+
+## Editor Integration Notes
+
+- Conversion-to-editor persistence and routing is documented in:
+  - `frontend/docs/editor-data-flow.md`
+- Frontend project persistence is bridged to backend `/api/tex` routes (Postgres-backed).

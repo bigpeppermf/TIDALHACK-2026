@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Eye, Edit3, RotateCcw, FileText, Loader2, AlertCircle } from 'lucide-vue-next'
-
-export interface Project {
-  id: string
-  name: string
-  updatedAt: string
-  status: 'converted' | 'processing' | 'failed'
-  thumbnail?: string
-}
+import type { ProjectRecord } from '@/types/project'
 
 const props = defineProps<{
-  project: Project
+  project: ProjectRecord
 }>()
 
 const emit = defineEmits<{

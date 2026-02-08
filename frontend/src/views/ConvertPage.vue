@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import UploadZone from '@/components/convert/UploadZone.vue'
 import LoadingAnimation from '@/components/convert/LoadingAnimation.vue'
@@ -11,12 +12,17 @@ type Stage = 'upload' | 'loading' | 'result' | 'error'
 
 const { error: convertError, convert, reset: resetConvert } = useConvert()
 const { addConvertedProject } = useProjects()
+const router = useRouter()
 
 const stage = ref<Stage>('upload')
 const imageUrl = ref('')
 const isPdf = ref(false)
 const latexOutput = ref('')
 const uploadedFile = ref<File | null>(null)
+const ownerId = ref<string | null>(
+  typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id'),
+)
+const latestProjectId = ref<string | null>(null)
 
 const allStages: ('upload' | 'loading' | 'result')[] = ['upload', 'loading', 'result']
 
@@ -37,7 +43,14 @@ async function handleFileAccepted(file: File) {
   try {
     const res = await convert(file)
     latexOutput.value = res.latex
-    addConvertedProject(file.name)
+    const project = await addConvertedProject({
+      name: file.name,
+      latex: res.latex,
+      sourceFilename: file.name,
+      sourceKind: isPdf.value ? 'pdf' : 'image',
+      ownerId: ownerId.value,
+    })
+    latestProjectId.value = project.id
     stage.value = 'result'
   } catch {
     stage.value = 'error'
@@ -50,7 +63,13 @@ function handleReset() {
   isPdf.value = false
   latexOutput.value = ''
   uploadedFile.value = null
+  latestProjectId.value = null
   resetConvert()
+}
+
+function openEditorForLatest() {
+  if (!latestProjectId.value) return
+  router.push({ path: '/editor', query: { projectId: latestProjectId.value } })
 }
 
 function stageIndex(s: string): number {
@@ -146,6 +165,15 @@ onUnmounted(() => {
       </div>
 
       <!-- Result -->
+      <div v-if="stage === 'result'" class="mb-3 w-full max-w-[1600px] px-4 text-right">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+          @click="openEditorForLatest"
+        >
+          Open In Editor
+        </button>
+      </div>
       <ResultView
         v-if="stage === 'result'"
         :image-url="imageUrl"

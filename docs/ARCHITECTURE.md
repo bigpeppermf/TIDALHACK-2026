@@ -114,6 +114,17 @@ GEMINI_MODEL=gemini-2.5-flash
 # Ports (don't change unless conflict)
 FRONTEND_URL=http://localhost:5173
 BACKEND_URL=http://localhost:8000
+
+# Database (required for /api/tex features)
+DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/monogram
+
+# Auth (Clerk)
+CLERK_SECRET_KEY=your_clerk_secret
+CLERK_ISSUER=https://<your-clerk-domain>
+CLERK_AUDIENCE=your_clerk_audience
+
+# Dev-only auth bypass (do not use in prod)
+AUTH_DEV_BYPASS=1
 ```
 
 Frontend also needs a `VITE_API_URL` in its own env or hardcoded:

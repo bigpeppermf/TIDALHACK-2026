@@ -16,11 +16,11 @@
 - [x] Implement `GET /api/tex/{id}`
 - [x] Implement `GET /api/tex/{id}/download`
 - [x] Enforce ownership check in each handler
-- [ ] Inject current user via dependency
+- [x] Inject current user via dependency
 
 ## PHASE 3 — Auth Compatibility
 
-- [x] Provide mock auth identity for local development
+- [x] Provide dev auth identity for local development (`AUTH_DEV_BYPASS=1`)
 - [ ] Accept OAuth identity claims from JWT or session
 - [ ] Map `(provider, provider_user_id)` to `users.id`
 - [ ] Reject any client-provided `user_id`

@@ -25,7 +25,7 @@ These map to:
 2. Clerk issues a session JWT
 3. Frontend sends:
    Authorization: Bearer <JWT>
-4. Backend validates token
+4. Backend validates token via Clerk SDK
 5. Backend resolves or creates user
 6. Request proceeds with internal `user.id`
 
@@ -33,23 +33,23 @@ These map to:
 
 ## Implementation Notes (Current)
 
-- JWT validation lives in `src/backend/app/auth/jwt.py`.
+- Auth validation lives in `src/backend/app/auth/clerk.py`.
 - `get_current_user` in `src/backend/app/deps.py`:
-  - Validates the Clerk JWT
+  - Validates the Clerk JWT via Clerk SDK
   - Resolves or creates the `users` row
   - Returns the SQLAlchemy `User` object
-- JWKS keys are fetched from Clerk and cached in-memory (5 minute TTL).
-- Requires `PyJWT` at runtime.
+- Clerk SDK handles token verification and JWKS fetching internally.
 
 ---
 
 ## Required Environment Variables
 
+- `CLERK_SECRET_KEY`
 - `CLERK_ISSUER`
 - `CLERK_AUDIENCE`
 
-Optional:
-- `CLERK_JWKS_URL` (overrides default JWKS URL)
+Optional (dev only):
+- `AUTH_DEV_BYPASS=1` to bypass auth locally
 
 ---
 

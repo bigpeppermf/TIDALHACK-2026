@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -28,7 +29,9 @@ def export_tex_file(
     - assumes tex_source is already validated and owned by the user
     - does NOT perform auth, DB access, or HTTP logic
     """
-    safe_name = filename or "document"
+    safe_name = (filename or "document").strip() or "document"
+    safe_name = re.sub(r"\s+", " ", safe_name)
+    safe_name = re.sub(r"\.(tex|pdf|html)$", "", safe_name, flags=re.IGNORECASE)
 
     if format == "tex":
         return ExportResult(

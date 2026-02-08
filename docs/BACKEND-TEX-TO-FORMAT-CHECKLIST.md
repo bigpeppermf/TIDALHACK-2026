@@ -19,9 +19,9 @@ The output format is determined by a backend query parameter.
 ---
 
 ## Phase 2 — API Design
-- [ ] Register `GET /tex-files/{id}/download` in the backend router
-- [ ] Parse `id` from the path and `format` from the query string
-- [ ] Authenticate the caller and enforce file ownership for the requested `id`
+- [x] Register `GET /api/tex-files/{id}/export` in the backend router
+- [x] Parse `id` from the path and `format` from the query string
+- [x] Authenticate the caller and enforce file ownership for the requested `id`
 - [ ] Ignore any client-supplied file paths; only server-created temp paths are used
 
 ---

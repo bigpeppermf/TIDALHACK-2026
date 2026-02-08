@@ -4,7 +4,7 @@
 
 Feature name: LaTeX Storage and Retrieval
 Intended audience: Backend and API developers
-Status: OAuth-ready (mock identity in current code)
+Status: OAuth-ready (Clerk auth implemented with optional dev bypass)
 Related documents: `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/BACKEND-LATEX-DATA-CHECKLIST.md`
 
 ## 2. Purpose
@@ -54,9 +54,10 @@ Uniqueness and constraints:
 
 ## 5. Authentication Assumptions
 
-Pre-OAuth identity resolution uses a mock user hardcoded in routes: `mock-user-id`.
+Primary identity resolution uses Clerk session JWTs. The backend validates the token
+via Clerk SDK, then maps `(provider, provider_user_id)` to `users.id`.
 
-Post-OAuth identity resolution maps JWT or session claims to `(provider, provider_user_id)` and then to `users.id`.
+For local development, `AUTH_DEV_BYPASS=1` returns a fixed dev user.
 
 Invariants:
 Clients never send `user_id`. Backend enforces ownership for every operation. OAuth providers are treated as interchangeable identity sources.

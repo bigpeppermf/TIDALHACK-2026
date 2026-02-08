@@ -11,6 +11,7 @@ relationships
 
 
 import uuid
+from datetime import datetime
 from sqlalchemy import Column, Text, TIMESTAMP, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from .base import Base
@@ -52,7 +53,8 @@ class User(Base):
 
     created_at = Column(
         TIMESTAMP,
-        nullable=False
+        nullable=False,
+        default=datetime.utcnow
     )
 
 
@@ -83,10 +85,13 @@ class TexFile(Base):
 
     created_at = Column(
         TIMESTAMP,
-        nullable=False
+        nullable=False,
+        default=datetime.utcnow
     )
 
     updated_at = Column(
         TIMESTAMP,
-        nullable=False
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
     )

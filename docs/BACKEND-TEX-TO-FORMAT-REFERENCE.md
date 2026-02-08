@@ -10,6 +10,16 @@
 
 ---
 
+## API Endpoint
+
+`GET /api/tex-files/{id}/export?format=pdf|html|tex`
+
+- Auth required (Clerk session JWT)
+- Ownership enforced by `user_id`
+- Responds with a file download and `Content-Disposition`
+
+---
+
 ## Recommended Tooling
 
 ### PDF

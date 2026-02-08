@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from .models import TexFile
 
@@ -65,7 +66,9 @@ def create_tex_file(
     tex_file = TexFile(
         user_id=user_id,
         filename=filename,
-        latex_content=latex
+        latex_content=latex,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
     )
 
     db.add(tex_file)
@@ -96,6 +99,7 @@ def update_tex_file(
 
     if latex is not None:
         tex_file.latex_content = latex
+    tex_file.updated_at = datetime.utcnow()
 
     db.commit()
     db.refresh(tex_file)

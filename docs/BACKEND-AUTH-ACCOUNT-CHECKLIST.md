@@ -26,6 +26,7 @@ Out of scope:
 - [x] JWT validation is implemented
 - [x] Token parsing is implemented
 - [x] No auth middleware (dependency-based only)
+- [x] Auth can be bypassed in dev with `AUTH_DEV_BYPASS=1`
 
 ---
 
@@ -33,8 +34,8 @@ Out of scope:
 
 - [x] Choose auth source (Clerk)
 - [x] Choose token type (JWT session token)
-- [ ] Decide validation method
-  - [x] Clerk public keys (JWKS)
+- [x] Decide validation method
+  - [x] Clerk SDK authentication (JWKS handled by Clerk)
   - [x] Issuer + audience verification
 - [x] Decide backend pattern
   - [x] Dependency-based auth (FastAPI)

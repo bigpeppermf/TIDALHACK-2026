@@ -1,0 +1,69 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\begin{document}
+
+\section*{Example 4 A table of values for $f, g, f'$, and $g'$ is given.}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+$x$ & $f(x)$ & $g(x)$ & $f'(x)$ & $g'(x)$ \\
+\hline
+1 & 3 & 2 & 9 & 4 \\
+2 & 1 & 8 & 8 & -2 \\
+3 & 7 & 2 & 3 & -7 \\
+\hline
+\end{tabular}
+
+(1) If $h(x) = f(g(x))$, find $h'(1)$
+\begin{align*}
+h'(x) &= f'(g(x)) \cdot g'(x) \\
+h'(1) &= f'(g(1)) \cdot g'(1) \\
+&= f'(2) \cdot 4 = 8 \cdot 4 = 32.
+\end{align*}
+
+(2) If $H(x) = g(f(x))$, find $H'(2)$.
+\begin{align*}
+H'(x) &= g'(f(x)) f'(x) \\
+H'(2) &= g'(f(2)) f'(2) \\
+&= g'(1) \cdot 8 = 4 \cdot 8 = 32
+\end{align*}
+
+Consider the cycle $(\cos x)' \rightarrow (\cos x)'' \rightarrow (\cos x)''' \rightarrow (\cos x)''''$
+\begin{align*}
+-\sin x \quad -\cos x \quad \sin x \quad \cos x
+\end{align*}
+
+\section*{Quiz 4}
+\section*{Example 5 Find the $2023^\text{th}$ derivative of $y = \cos(2x)$.}
+$2020 + 3 = 2023$
+
+$2^{2023} \sin 2x$
+
+\begin{align*}
+(e^x f(x))' &= e^x (-f(x) + f'(x))
+\end{align*}
+
+\section*{Example 6 Find the $2024^\text{th}$ derivative of $f(x) = xe^{-x}$.}
+\begin{align*}
+f'(x) &= e^{-x}(-x+1) \\
+f''(x) &= e^{-x}(x-1-1) \\
+f'''(x) &= e^{-x}(-x+2+1) \\
+f^{(4)}(x) &= e^{-x}(x-3-1) \\
+f^{(2023)}(x) &= e^{-x}(-x+2023) \\
+f^{(2024)}(x) &= e^{-x}(x-2024)
+\end{align*}
+
+\section*{Example 7 Find $\frac{d^{2025}}{dx^{2025}}\left(\frac{1}{x}\right)$.}
+\begin{align*}
+f(x) &= x^{-1} \\
+f'(x) &= -x^{-2} \\
+f''(x) &= 2 \cdot x^{-3} \\
+f'''(x) &= -3 \cdot 2 \cdot 1 \cdot x^{-4} \\
+f^{(4)}(x) &= 4 \cdot 3 \cdot 2 \cdot 1 \cdot x^{-5} \\
+f^{(2025)}(x) &= -2025! x^{-2026}
+\end{align*}
+
+\end{document}

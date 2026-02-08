@@ -1,0 +1,49 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\geometry{a4paper, margin=1in}
+
+\begin{document}
+
+(8) $g(x) = \sin x^2 + (\cos x)^2$
+\begin{align*}
+g'(x) &= \cos x^2 \cdot 2x + 2\cos x \cdot (-\sin x)
+\end{align*}
+
+(9) $g(x) = \tan(\cos x)$
+\begin{align*}
+g'(x) &= \sec^2(\cos x) (\cos x)' \\
+&= \sec^2(\cos x) (-\sin x)
+\end{align*}
+
+(10) $g(x) = \tan x \cos x$
+\begin{align*}
+g'(x) &= (\tan x)' \cos x + \tan x (\cos x)' \\
+&= \sec^2 x \cos x + \tan x (-\sin x)
+\end{align*}
+
+(11) $G(t) = e^{7t \sin 2t}$
+% [Diagram: Chain rule breakdown showing t -> 7t sin(2t) -> exp(7t sin(2t))]
+\begin{align*}
+G'(t) &= e^{7t \sin 2t} (7t \sin 2t)' \\
+&= e^{7t \sin 2t} (7 \sin 2t + 7t \cos 2t \cdot 2)
+\end{align*}
+
+(12) $h(t) = \left(\frac{t^4+5}{t^2+5}\right)^3$
+\begin{align*}
+h'(t) &= 3\left(\frac{t^4+5}{t^2+5}\right)^2 \left(\frac{t^4+5}{t^2+5}\right)' \\
+&= 3\left(\frac{t^4+5}{t^2+5}\right)^2 \left(\frac{4t^3(t^2+5) - (t^4+5)2t}{(t^2+5)^2}\right)
+\end{align*}
+
+(13) $y = \sin^2(\cos 3x) = (\sin(\cos 3x))^2$
+% [Diagram: Chain rule breakdown for y = sin^2(cos 3x)]
+\begin{align*}
+y' &= 2 \sin(\cos 3x) (\sin(\cos 3x))' \\
+&= 2 \sin(\cos 3x) \cos(\cos 3x) (\cos 3x)' \\
+&= 2 \sin(\cos 3x) \cos(\cos 3x) (-\sin 3x) (3x)' \\
+&= 2 \sin(\cos 3x) \cos(\cos 3x) (-\sin 3x) \cdot 3
+\end{align*}
+
+\end{document}

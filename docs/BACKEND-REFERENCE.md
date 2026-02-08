@@ -64,26 +64,19 @@ uvicorn app.main:app --reload --port 8000
 import os
 import base64
 from google import genai
+from google.genai import types
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def convert_image_to_latex(base64_image: str, context: str = "general") -> str:
     prompt = get_system_prompt(context)
+    image_bytes = base64.b64decode(base64_image)
     
     response = client.models.generate_content(
         model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         contents=[
-            {
-                "parts": [
-                    {"text": prompt},
-                    {
-                        "inline_data": {
-                            "mime_type": "image/jpeg",
-                            "data": base64_image
-                        }
-                    }
-                ]
-            }
+            types.Part.from_text(prompt),
+            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
         ]
     )
     

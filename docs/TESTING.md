@@ -186,6 +186,21 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
+#### Ad hoc conversion scripts
+
+```bash
+# 1) Create processed images from a PDF (writes to tests/image_tests/out)
+python tests/image_tests/pdf_to_image_test.py
+
+# 2) Convert processed JPGs to LaTeX (writes to tests/latex_tests/out)
+export GEMINI_API_KEY=your_key_here
+python tests/latex_tests/pdf_to_latex_test.py
+```
+
+Notes:
+- The LaTeX script expects processed files named `page_*.processed.jpg` in `tests/image_tests/out`.
+- If you prefer a different folder or filename pattern, update `tests/latex_tests/pdf_to_latex_test.py`.
+
 ### 🎨 Frontend — Vitest (if scaffolded with testing)
 
 ```bash

@@ -15,10 +15,10 @@ const { user } = useUser()
           <!-- Logo -->
           <div class="flex items-center gap-3">
             <div
-              class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-sm"
+              class="flex h-10 w-10 items-center justify-center rounded-sm p-1"
               style="background: hsl(var(--primary)); color: hsl(var(--primary-foreground))"
             >
-              <img v-if="user?.imageUrl" :src="user.imageUrl" alt="Profile" class="h-full w-full object-cover" />
+              <img v-if="user?.imageUrl" :src="user.imageUrl" alt="Profile" class="h-full w-full object-contain" />
               <span v-else class="text-xs font-bold" style="font-family: var(--font-heading)">m</span>
             </div>
             <span

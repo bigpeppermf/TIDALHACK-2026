@@ -10,7 +10,7 @@ const steps = [
     iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
     title: 'Upload Your Notes',
     description:
-      'Drag and drop your handwritten notes, equations, or diagrams. We support all common image formats and multi-page PDFs.',
+      'Drag and drop your notes, equations, or diagrams. We support PDF, HTML, and LaTeX files.',
   },
   {
     iconPath: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
@@ -22,7 +22,7 @@ const steps = [
     iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
     title: 'Edit & Export',
     description:
-      'Review the output in our live editor, make refinements with syntax highlighting and auto-complete, then export as .tex, .html, or .pdf.',
+      'Review the output in our live editor, make refinements with syntax highlighting and auto-complete, then export as LaTeX, HTML, or PDF.',
   },
 ]
 </script>
@@ -72,49 +72,6 @@ const steps = [
         />
       </div>
     </div>
-  </section>
-
-  <!-- Testimonial -->
-  <section class="overflow-hidden relative">
-    <LineReveal :delay="0" />
-
-    <div class="py-28 md:py-32 px-6 md:px-12">
-      <div class="max-w-4xl mx-auto text-center">
-        <FadeIn :delay="0">
-          <span
-            class="text-[80px] leading-none"
-            style="color: hsl(var(--primary) / 0.3); font-family: var(--font-heading)"
-          >
-            &ldquo;
-          </span>
-        </FadeIn>
-
-        <FadeIn :delay="200">
-          <blockquote
-            class="text-2xl md:text-4xl font-normal italic leading-snug text-foreground -mt-5"
-            style="font-family: var(--font-heading)"
-          >
-            It understood my terrible handwriting
-            better than I do. Three semesters of notes
-            <span class="text-primary">converted in an afternoon.</span>
-          </blockquote>
-        </FadeIn>
-
-        <FadeIn :delay="500">
-          <div class="mt-12 flex flex-col items-center gap-2">
-            <div class="w-10 h-px mb-2" style="background: hsl(var(--primary) / 0.3)" />
-            <span class="text-[13px] font-medium text-muted-foreground">
-              Dr. Elise Hartmann
-            </span>
-            <span class="text-xs text-muted-foreground/50">
-              Theoretical Physics, ETH Zurich
-            </span>
-          </div>
-        </FadeIn>
-      </div>
-    </div>
-
-    <LineReveal :delay="400" />
   </section>
 
   <!-- Final CTA -->
@@ -181,7 +138,7 @@ const steps = [
       <FadeIn :delay="1100">
         <div class="mt-16 flex items-center gap-3">
           <span
-            v-for="format in ['JPEG', 'PNG', 'WebP', 'PDF']"
+            v-for="format in ['PDF', 'HTML', 'LaTeX']"
             :key="format"
             class="px-4 py-1.5 rounded-full text-[11px] tracking-[0.15em] border border-border/30 text-muted-foreground/40"
           >

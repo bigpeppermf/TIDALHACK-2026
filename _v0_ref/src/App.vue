@@ -198,13 +198,13 @@ onUnmounted(() => {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 max-w-6xl">
           <BentoCard
             title="Drag & Drop Upload"
-            description="Simply drop your handwritten notes. We accept JPEG, PNG, WebP, and PDF formats up to 10MB."
+            description="Simply drop your handwritten notes. We accept PDF, HTML, and LaTeX formats up to 10MB."
             icon="&#x2191;"
             :delay="0"
             span="md:col-span-2"
           />
           <BentoCard
-            title="AI-Powered OCR"
+            title="Gemini OCR Engine"
             description="Neural networks trained on millions of equations recognize your handwriting with remarkable precision."
             icon="&#x26A1;"
             :delay="100"
@@ -224,7 +224,7 @@ onUnmounted(() => {
           />
           <BentoCard
             title="Export Options"
-            description="Download as .tex, .html, or compiled .pdf. Share or integrate into your existing workflow."
+            description="Download as LaTeX, HTML, or PDF. Share or integrate into your existing workflow."
             icon="&#x2193;"
             :delay="400"
             span="md:col-span-2"
@@ -283,7 +283,7 @@ onUnmounted(() => {
           <TimelineStep
             :step="1"
             title="Upload Your Notes"
-            description="Drag and drop your handwritten notes, equations, or diagrams. We support all common image formats and multi-page PDFs."
+            description="Drag and drop your notes, equations, or diagrams. We support PDF, HTML, and LaTeX files."
             icon="&#x2191;"
             :delay="0"
           />
@@ -297,7 +297,7 @@ onUnmounted(() => {
           <TimelineStep
             :step="3"
             title="Edit & Export"
-            description="Review the output in our live editor, make refinements with syntax highlighting and auto-complete, then export as .tex, .html, or .pdf."
+            description="Review the output in our live editor, make refinements with syntax highlighting and auto-complete, then export as LaTeX, HTML, or PDF."
             icon="&#x2193;"
             :delay="400"
             :isLast="true"
@@ -483,7 +483,7 @@ onUnmounted(() => {
         <FadeIn :delay="1100">
           <div style="margin-top: 64px; display: flex; align-items: center; gap: 12px;">
             <span
-              v-for="format in ['JPEG', 'PNG', 'WebP', 'PDF']"
+              v-for="format in ['PDF', 'HTML', 'LaTeX']"
               :key="format"
               style="padding: 6px 16px; border: 1px solid rgba(138,133,128,0.1); border-radius: 100px; color: rgba(138,133,128,0.4); font-size: 11px; letter-spacing: 0.15em; font-family: 'Inter', sans-serif;"
             >

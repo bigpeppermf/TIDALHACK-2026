@@ -3,8 +3,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import SlamText from './SlamText.vue'
 import FadeIn from './FadeIn.vue'
-import StatsCounter from './StatsCounter.vue'
-import LineReveal from './LineReveal.vue'
 
 const scrollY = ref(0)
 
@@ -41,14 +39,14 @@ onUnmounted(() => {
           text="mono"
           :angle="-6"
           :delay="200"
-          size="text-[13vw] md:text-[8vw] lg:text-[7vw]"
+          size="text-[16vw] md:text-[10vw] lg:text-[9vw]"
           weight="font-black"
         />
         <SlamText
           text="gram"
           :angle="-6"
           :delay="500"
-          size="text-[13vw] md:text-[8vw] lg:text-[7vw]"
+          size="text-[16vw] md:text-[10vw] lg:text-[9vw]"
           weight="font-black"
           :italic="true"
         />
@@ -92,7 +90,7 @@ onUnmounted(() => {
         <FadeIn :delay="1500">
           <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
             <span
-              v-for="format in ['JPEG', 'PNG', 'WebP', 'PDF']"
+              v-for="format in ['PDF', 'HTML', 'LaTeX']"
               :key="format"
               class="px-3 py-1 rounded-full text-[11px] tracking-[0.13em] border border-border/30 text-muted-foreground/50 font-medium"
             >
@@ -116,22 +114,4 @@ onUnmounted(() => {
     </div>
   </section>
 
-  <!-- Stats Bar -->
-  <section class="overflow-hidden relative">
-    <LineReveal :delay="0" />
-    <div class="py-16 md:py-20 px-4 md:px-0">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-0 max-w-4xl mx-auto">
-        <div class="flex flex-col items-center justify-center text-center md:border-r border-border/20 px-2 md:px-6">
-          <StatsCounter :value="99" suffix="%" label="Accuracy" :delay="0" />
-        </div>
-        <div class="flex flex-col items-center justify-center text-center md:border-r border-border/20 px-2 md:px-6">
-          <StatsCounter :value="3" prefix="<" suffix="s" label="Conversion Time" :delay="200" />
-        </div>
-        <div class="flex flex-col items-center justify-center text-center px-2 md:px-6">
-          <StatsCounter :value="10" suffix="k+" label="Equations Processed" :delay="400" />
-        </div>
-      </div>
-    </div>
-    <LineReveal :delay="200" />
-  </section>
 </template>

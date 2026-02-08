@@ -51,8 +51,9 @@ const emit = defineEmits<{
   share: []
 }>()
 
-const showDownloadMenu = ref(false)
-const downloadFormats = [
+const showDownloadOptions = ref(false)
+const selectedFormat = ref<'tex' | 'html' | 'pdf'>('tex')
+const formatOptions = [
   { value: 'tex' as const, label: '.tex' },
   { value: 'html' as const, label: '.html' },
   { value: 'pdf' as const, label: '.pdf' },
@@ -572,33 +573,39 @@ onBeforeUnmount(() => {
         >
           {{ copied ? 'Copied' : 'Copy' }}
         </button>
-        <div class="relative">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+          style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
+          @click="showDownloadOptions = !showDownloadOptions"
+        >
+          Download
+        </button>
+        <div
+          v-if="showDownloadOptions"
+          class="inline-flex items-center gap-2 rounded-sm border px-2 py-1"
+          style="background: hsl(var(--card) / 0.8); border-color: hsl(var(--border) / 0.4)"
+        >
+          <select
+            v-model="selectedFormat"
+            class="rounded-sm bg-transparent px-2 py-1 text-[10px] tracking-wide text-foreground outline-none"
+            style="border: 1px solid hsl(var(--border) / 0.3)"
+          >
+            <option
+              v-for="option in formatOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
-            style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
-            @click="showDownloadMenu = !showDownloadMenu"
+            class="rounded-sm bg-primary px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
+            @click="emit('download-format', selectedFormat)"
           >
-            Download
-            <svg class="h-3 w-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
+            Go
           </button>
-          <div
-            v-if="showDownloadMenu"
-            class="absolute bottom-full right-0 mb-1 w-36 overflow-hidden rounded-sm border shadow-xl"
-            style="background: hsl(var(--card) / 0.9); border-color: hsl(var(--border) / 0.4); backdrop-filter: blur(16px)"
-          >
-            <button
-              v-for="fmt in downloadFormats"
-              :key="fmt.value"
-              type="button"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-[10px] font-medium tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              @click="emit('download-format', fmt.value); showDownloadMenu = false"
-            >
-              {{ fmt.label }}
-            </button>
-          </div>
         </div>
       </div>
     </footer>

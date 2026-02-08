@@ -25,12 +25,12 @@ const features = [
     iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
     title: 'Drag & Drop Upload',
     description:
-      'Simply drop your handwritten notes. We accept JPEG, PNG, WebP, and PDF formats up to 10MB.',
+      'Simply drop your handwritten notes. We accept PDF, HTML, and LaTeX formats up to 10MB.',
     span: 'md:col-span-2',
   },
   {
     iconPath: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
-    title: 'AI-Powered OCR',
+    title: 'Gemini OCR Engine',
     description:
       'Neural networks trained on millions of equations recognize your handwriting with remarkable precision.',
   },
@@ -51,7 +51,7 @@ const features = [
     iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
     title: 'Export Options',
     description:
-      'Download as .tex, .html, or compiled .pdf. Share or integrate into your existing workflow.',
+      'Download as LaTeX, HTML, or PDF. Share or integrate into your existing workflow.',
     span: 'md:col-span-2',
   },
   {

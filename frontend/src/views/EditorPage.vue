@@ -741,11 +741,44 @@ async function handleDownloadFormat(format: 'tex' | 'html' | 'pdf') {
     return
   }
 
+  compileErrorMessage.value = ''
+
   let projectId = currentProjectId.value
   if (!projectId) {
-    compileErrorMessage.value = 'No active project.'
-    compileState.value = 'error'
-    return
+    try {
+      const created = await addConvertedProject({
+        name: currentProjectName.value || 'Untitled project',
+        latex: code.value,
+        sourceFilename: currentSourceFilename.value || 'main.tex',
+        sourceKind: 'unknown',
+        ownerId: userId.value ?? null,
+      })
+
+      if (created.id.startsWith('local-')) {
+        compileErrorMessage.value = 'Sign in to enable HTML/PDF export.'
+        compileState.value = 'error'
+        return
+      }
+
+      projectId = created.id
+      currentProjectId.value = created.id
+      currentProjectName.value = created.name
+      currentSourceFilename.value = created.sourceFilename ?? currentSourceFilename.value
+      clearAuthError()
+      if (routeProjectId.value !== created.id) {
+        void router.replace({
+          path: '/editor',
+          query: {
+            ...route.query,
+            projectId: created.id,
+          },
+        })
+      }
+    } catch {
+      compileErrorMessage.value = 'Could not save project. Sign in and try again.'
+      compileState.value = 'error'
+      return
+    }
   }
 
   // Auto-promote local projects before export
@@ -773,6 +806,13 @@ async function handleDownloadFormat(format: 'tex' | 'html' | 'pdf') {
   }
 
   try {
+    const saved = await updateProjectLatex(projectId, code.value)
+    if (!saved) {
+      compileErrorMessage.value = 'Save failed. Fix save issue before export.'
+      compileState.value = 'error'
+      return
+    }
+
     await exportFile({
       format,
       texFileId: projectId,

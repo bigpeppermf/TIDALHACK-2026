@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { Codemirror } from 'vue-codemirror'
+import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { bracketMatching, defaultHighlightStyle, foldKeymap, indentOnInput, StreamLanguage, syntaxHighlighting } from '@codemirror/language'
+import { searchKeymap } from '@codemirror/search'
+import { EditorState } from '@codemirror/state'
+import { crosshairCursor, drawSelection, dropCursor, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, rectangularSelection } from '@codemirror/view'
+import { stex } from '@codemirror/legacy-modes/mode/stex'
 import * as PDFJS from 'pdfjs-dist'
 
 PDFJS.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
@@ -42,8 +50,7 @@ const emit = defineEmits<{
   share: []
 }>()
 
-const editorRef = ref<HTMLTextAreaElement | null>(null)
-const gutterRef = ref<HTMLElement | null>(null)
+const codeEditorView = shallowRef<EditorView | null>(null)
 const cursorLine = ref(1)
 const cursorColumn = ref(1)
 
@@ -57,15 +64,9 @@ const currentPage = ref(1)
 const totalPages = ref(0)
 const pdfViewerError = ref('')
 
-const lineCount = computed(() => Math.max(1, props.modelValue.split('\n').length))
-
 const wordCount = computed(() => {
   const trimmed = props.modelValue.trim()
   return trimmed ? trimmed.split(/\s+/).length : 0
-})
-
-const lineNumbers = computed(() => {
-  return Array.from({ length: lineCount.value }, (_, index) => index + 1).join('\n')
 })
 
 const hasRealFiles = computed(() => Array.isArray(props.files) && props.files.length > 0)
@@ -91,32 +92,65 @@ function setActiveTab(tab: 'preview' | 'source') {
   emit('update:activeTab', tab)
 }
 
-function updateCode(event: Event) {
-  const target = event.target as HTMLTextAreaElement
-  emit('update:modelValue', target.value)
-  updateCursorPosition(target)
+const editorValue = computed({
+  get: () => props.modelValue,
+  set: (value: string) => emit('update:modelValue', value),
+})
+
+const editorExtensions = computed(() => [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  history(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  StreamLanguage.define(stex),
+  keymap.of([
+    indentWithTab,
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...historyKeymap,
+    ...completionKeymap,
+    ...searchKeymap,
+    ...foldKeymap,
+  ]),
+  EditorState.readOnly.of(Boolean(props.readOnly)),
+  EditorView.editable.of(!props.readOnly),
+])
+
+const editorStyle = computed(() => ({
+  fontSize: `${Math.round((14 * props.zoom) / 100)}px`,
+}))
+
+function syncCursorFromView(view: EditorView) {
+  const head = view.state.selection.main.head
+  const line = view.state.doc.lineAt(head)
+  cursorLine.value = line.number
+  cursorColumn.value = head - line.from + 1
+}
+
+function handleEditorReady(payload: { view: EditorView }) {
+  codeEditorView.value = payload.view
+  syncCursorFromView(payload.view)
+}
+
+function handleEditorUpdate(update: { view: EditorView; selectionSet: boolean }) {
+  if (update.selectionSet) {
+    syncCursorFromView(update.view)
+  }
 }
 
 function updateZoom(event: Event) {
   const target = event.target as HTMLInputElement
   emit('update:zoom', Number(target.value))
-}
-
-function handleEditorScroll(event: Event) {
-  const target = event.target as HTMLTextAreaElement
-  if (gutterRef.value) {
-    gutterRef.value.scrollTop = target.scrollTop
-  }
-}
-
-function updateCursorPosition(target?: HTMLTextAreaElement) {
-  const editor = target ?? editorRef.value
-  if (!editor) return
-  const cursorIndex = editor.selectionStart
-  const contentBeforeCursor = editor.value.slice(0, cursorIndex)
-  const rows = contentBeforeCursor.split('\n')
-  cursorLine.value = rows.length
-  cursorColumn.value = (rows[rows.length - 1] ?? '').length + 1
 }
 
 async function renderPage(pageNum: number) {
@@ -378,24 +412,21 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="relative min-h-0 flex-1" :class="activeTab === 'preview' ? 'hidden md:block' : 'block'">
-            <div class="absolute inset-0 flex bg-[hsl(var(--background)/0.55)]">
-              <pre
-                ref="gutterRef"
-                class="w-14 overflow-hidden border-r border-border bg-[hsl(var(--muted)/0.35)] px-2 py-4 text-right font-mono text-xs leading-6 text-muted-foreground"
-              >{{ lineNumbers }}</pre>
-              <textarea
-                ref="editorRef"
-                :value="modelValue"
-                class="h-full min-w-0 flex-1 resize-none bg-transparent px-4 py-4 font-mono leading-6 text-foreground outline-none"
+            <div class="absolute inset-0 bg-[hsl(var(--background)/0.55)]">
+              <Codemirror
+                v-model="editorValue"
+                class="latex-codemirror h-full min-w-0"
                 :class="props.readOnly ? 'opacity-75' : ''"
-                :style="{ fontSize: `${Math.round((14 * zoom) / 100)}px` }"
-                :readonly="props.readOnly"
-                spellcheck="false"
-                @input="updateCode"
-                @scroll="handleEditorScroll"
-                @click="updateCursorPosition()"
-                @keyup="updateCursorPosition()"
-                @select="updateCursorPosition()"
+                :style="editorStyle"
+                :extensions="editorExtensions"
+                :disabled="props.readOnly"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :autofocus="false"
+                :auto-destroy="true"
+                placeholder="Type LaTeX..."
+                @ready="handleEditorReady"
+                @update="handleEditorUpdate"
               />
             </div>
           </div>
@@ -507,3 +538,25 @@ onBeforeUnmount(() => {
     </footer>
   </div>
 </template>
+
+<style scoped>
+.latex-codemirror :deep(.cm-editor) {
+  height: 100%;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.latex-codemirror :deep(.cm-scroller) {
+  min-height: 100%;
+  line-height: 1.5;
+}
+
+.latex-codemirror :deep(.cm-content) {
+  padding: 1rem;
+}
+
+.latex-codemirror :deep(.cm-gutters) {
+  border-right: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.35);
+}
+</style>

@@ -17,6 +17,13 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.9.0",
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/legacy-modes": "^6.5.2",
+    "@codemirror/search": "^6.5.11",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6",
     "@vueuse/core": "^14.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -29,6 +36,7 @@
     "reka-ui": "^2.8.0",
     "tailwind-merge": "^3.4.0",
     "vue": "^3.5.27",
+    "vue-codemirror": "^6.1.1",
     "vue-router": "^5.0.1",
     "vue-sonner": "^2.0.9"
   },

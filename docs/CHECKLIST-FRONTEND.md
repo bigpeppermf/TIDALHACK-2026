@@ -11,15 +11,15 @@
 
 ### With Teammate 2
 
-- [ ] Align on project scope and review docs together
-- [ ] Review API contract in `ARCHITECTURE.md` — agree on request/response shapes
-- [ ] Confirm both dev servers run without port conflicts (you: `:5173`, them: `:8000`)
+- [x] Align on project scope and review docs together
+- [x] Review API contract in `ARCHITECTURE.md` — agree on request/response shapes
+- [x] Confirm both dev servers run without port conflicts (you: `:5173`, them: `:8000`)
 
 ### Solo
 
 - [x] Scaffold Vue 3 project: `npm create vue@latest` in `frontend/`
 - [x] Pick: TypeScript ✅, Vue Router ✅, Pinia ❌, ESLint ❌
-- [x] Install deps: `npm install motion-v katex`
+- [x] Install deps: `npm install motion-v katex pdfjs-dist mathjax`
 - [x] Install dev deps: `npm install -D tailwindcss @tailwindcss/vite`
 - [x] Initialize shadcn-vue: `npx shadcn-vue@latest init`
 - [x] Add core shadcn components: `npx shadcn-vue@latest add button card input textarea sonner`
@@ -28,7 +28,7 @@
 - [x] Create `VITE_API_URL=http://localhost:8000` in `frontend/.env`
 - [x] Set up Vue Router: `/` → `HomePage.vue`, `/convert` → `ConvertPage.vue`
 - [x] Create empty page shells for both routes
-- [ ] Start Figma designs: upload screen, loading screen, result screen
+- [x] Start Figma designs: upload screen, loading screen, result screen
 
 **✅ Milestone:** Vue dev server running. Router works. Figma wireframes started.
 
@@ -38,16 +38,22 @@
 
 ### Upload Flow
 
-- [ ] Build `UploadZone.vue` — drag-and-drop area + file picker button
-- [ ] Add PDF filename preview after file is selected
-- [ ] File validation: only jpeg/png/webp, max 10MB, show error if wrong
-- [ ] Create `useConvert` composable (see FRONTEND-REFERENCE.md)
-- [ ] Wire upload → calls `POST /api/convert` (PDF) → receives LaTeX string
+- [x] Build `UploadZone.vue` — drag-and-drop area + file picker button
+- [x] Add PDF filename preview after file is selected
+- [x] File validation: only jpeg/png/webp/pdf, max 10MB, show error if wrong
+- [x] Create `useConvert` composable (see FRONTEND-REFERENCE.md)
+- [x] Wire upload → calls `POST /api/convert` (PDF/image) → receives LaTeX string
 
 ### Result Display
 
-- [ ] Build `ResultView.vue` — split layout: PDF preview left (or filename), LaTeX right
-- [ ] Build `LatexPreview.vue` — renders LaTeX with KaTeX
+- [x] Build `ResultView.vue` — split layout: PDF preview left, LaTeX right
+- [x] Build LaTeX preview with KaTeX rendering
+- [x] PDF viewer with PDF.js - page navigation (prev/next buttons)
+- [x] Source code tab - editable LaTeX textarea
+- [x] Copy LaTeX code button
+- [x] Download .tex file button
+- [x] Error handling for PDF loading
+- [x] Loading spinner during PDF load
 - [ ] Build `LatexEditor.vue` — editable text area (or CodeMirror) for LaTeX source
 - [ ] Wire editor `@input` → live KaTeX preview re-render
 - [ ] Build `LoadingAnimation.vue` — spinner + status text while API processes

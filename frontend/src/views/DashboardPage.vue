@@ -11,6 +11,18 @@ const { projects } = useProjects()
 function handleUpload() {
   router.push('/convert')
 }
+
+function handleView(_id: string) {
+  router.push('/convert')
+}
+
+function handleEdit(_id: string) {
+  router.push('/convert')
+}
+
+function handleRetry(_id: string) {
+  router.push('/convert')
+}
 </script>
 
 <template>
@@ -50,6 +62,9 @@ function handleUpload() {
             v-for="project in projects"
             :key="project.id"
             :project="project"
+            @view="handleView"
+            @edit="handleEdit"
+            @retry="handleRetry"
           />
         </div>
       </section>

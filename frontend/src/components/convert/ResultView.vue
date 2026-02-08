@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick, shallowRef, markRaw } from 'vue'
 import katex from 'katex'
+import * as PDFJS from 'pdfjs-dist'
 import { useExport } from '@/composables/useExport'
+
+// Set up PDF.js worker - serve from public folder
+PDFJS.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
 
 const props = defineProps<{
   imageUrl: string
@@ -20,7 +24,17 @@ const code = ref(props.latex)
 const copied = ref(false)
 const activeTab = ref<'preview' | 'source'>('preview')
 const slideIn = ref(false)
-const pdfDataUrl = ref('')
+const leftZoom = ref(100)
+const rightZoom = ref(100)
+const pdfDoc = shallowRef<any>(null)
+const currentPage = ref(1)
+const totalPages = ref(0)
+const pdfCanvas = ref<HTMLCanvasElement | null>(null)
+const pdfLoading = ref(false)
+const pdfError = ref('')
+const pageRendering = ref(false)
+const pageNumPending = ref<number | null>(null)
+const renderTask = shallowRef<any>(null)
 
 function escapeHtml(value: string): string {
   return value
@@ -31,22 +45,184 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
+/**
+ * Safely render KaTeX without showing red error messages
+ * Falls back to text display if rendering fails
+ */
+function safeMathRender(tex: string, displayMode: boolean = false): string {
+  try {
+    // First try to clean up common problematic patterns
+    let cleanedTex = tex.trim()
+    
+    // Remove unsupported commands
+    cleanedTex = cleanedTex.replace(/\\MATH/g, '')
+    cleanedTex = cleanedTex.replace(/\\begin\{scope\}/g, '')
+    cleanedTex = cleanedTex.replace(/\\end\{scope\}/g, '')
+    cleanedTex = cleanedTex.replace(/\\foreach/g, '%')
+    
+    // Try to render with KaTeX
+    const rendered = katex.renderToString(cleanedTex, { 
+      displayMode, 
+      throwOnError: false, 
+      strict: false,
+      errorColor: '#000'
+    })
+    
+    // If KaTeX produced an error (contains error styling), return plain text
+    if (rendered.includes('error') || rendered.includes('red')) {
+      throw new Error('KaTeX error detected')
+    }
+    
+    return rendered
+  } catch (error) {
+    // Fallback: render as plain text in a subtle box
+    const text = tex.trim()
+      .replace(/\\\\/g, '\n')
+      .replace(/\$/g, '')
+      .replace(/\{/g, '(')
+      .replace(/\}/g, ')')
+      .substring(0, 100) // Truncate very long formulas
+    
+    return displayMode 
+      ? `<div class="my-6 p-3 bg-gray-100 border border-gray-300 rounded font-mono text-xs leading-relaxed overflow-x-auto text-gray-700">${escapeHtml(text)}</div>`
+      : `<code class="font-mono text-xs px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700">${escapeHtml(text)}</code>`
+  }
+}
+
 onMounted(() => {
   setTimeout(() => {
     slideIn.value = true
   }, 50)
-  
-  // Create object URL for PDF if provided
-  if (props.isPdf && props.pdfFile) {
-    pdfDataUrl.value = URL.createObjectURL(props.pdfFile)
-  }
 })
+
+async function loadPdf(file: File) {
+  pdfLoading.value = true
+  pdfError.value = ''
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+
+    const pdf = await PDFJS.getDocument({ 
+      data: uint8Array,
+      disableAutoFetch: false,
+      disableStream: false
+    }).promise
+
+    pdfDoc.value = markRaw(pdf)
+    totalPages.value = pdf.numPages
+    currentPage.value = 1
+    pageNumPending.value = null
+    pdfLoading.value = false
+
+    // Wait until PDF viewer canvas is mounted in the DOM.
+    await nextTick()
+    queueRenderPage(1)
+  } catch (error: any) {
+    pdfError.value = `Failed to load PDF: ${error?.message || 'Unknown error'}`
+    pdfDoc.value = null
+    totalPages.value = 0
+    currentPage.value = 1
+    pdfLoading.value = false
+  } finally {
+    if (pdfLoading.value) {
+      pdfLoading.value = false
+    }
+  }
+}
+
+async function renderPage(pageNum: number) {
+  if (!pdfDoc.value || !pdfCanvas.value || pageRendering.value) {
+    if (pageRendering.value) {
+      pageNumPending.value = pageNum
+    }
+    return
+  }
+
+  pageRendering.value = true
+  try {
+    const page = await pdfDoc.value.getPage(pageNum)
+    const scale = 1.2
+    const viewport = page.getViewport({ scale })
+    const outputScale = window.devicePixelRatio || 1
+    const canvas = pdfCanvas.value
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) {
+      throw new Error('Failed to get 2D context')
+    }
+
+    canvas.width = Math.floor(viewport.width * outputScale)
+    canvas.height = Math.floor(viewport.height * outputScale)
+    canvas.style.width = `${Math.floor(viewport.width)}px`
+    canvas.style.height = `${Math.floor(viewport.height)}px`
+
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = 'white'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+
+    const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
+    renderTask.value = page.render({
+      canvasContext: context,
+      viewport: viewport,
+      transform,
+    })
+    await renderTask.value.promise
+
+    currentPage.value = pageNum
+    pdfError.value = ''
+  } catch (error: any) {
+    pdfError.value = String(error?.message || error)
+  } finally {
+    renderTask.value = null
+    pageRendering.value = false
+
+    if (pageNumPending.value !== null) {
+      const pending = pageNumPending.value
+      pageNumPending.value = null
+      renderPage(pending)
+    }
+  }
+}
+
+function queueRenderPage(pageNum: number) {
+  if (pageRendering.value) {
+    pageNumPending.value = pageNum
+    return
+  }
+  renderPage(pageNum)
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    queueRenderPage(currentPage.value + 1)
+  }
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    queueRenderPage(currentPage.value - 1)
+  }
+}
 
 watch(
   () => props.latex,
   (nextLatex) => {
     code.value = nextLatex
   },
+)
+
+watch(
+  () => [props.isPdf, props.pdfFile] as const,
+  ([isPdf, file]) => {
+    if (isPdf && file) {
+      loadPdf(file)
+      return
+    }
+    pdfDoc.value = null
+    totalPages.value = 0
+    currentPage.value = 1
+    pdfError.value = ''
+  },
+  { immediate: true },
 )
 
 /**
@@ -70,50 +246,39 @@ const renderedPreview = computed(() => {
     src = src.slice(beginDoc + '\\begin{document}'.length, endDoc).trim()
   }
 
-  // Handle sections and subsections FIRST
-  src = src.replace(/\\section\{([^}]*)\}/g, (_m, title) => 
-    insertSafeBlock(`<h2 class="text-2xl font-bold mt-8 mb-4 text-foreground">${escapeHtml(title)}</h2>`)
+  // Clean up common LaTeX errors and invalid commands before processing
+  src = src.replace(/\\MATH/g, 'MATH') // Remove invalid \MATH command
+  src = src.replace(/\\dx/g, 'dx') // Handle invalid \dx
+  src = src.replace(/\\frac\{([^}]*)\}\[([^\]]*)\]\[([^\]]*)\]/g, '\\frac{$1}{$2}') // Fix malformed fractions
+
+  // Handle sections and subsections FIRST (including starred versions)
+  src = src.replace(/\\section\*?\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h2 class="text-2xl font-bold mt-8 mb-4">${escapeHtml(title)}</h2>`)
   )
-  src = src.replace(/\\subsection\{([^}]*)\}/g, (_m, title) => 
-    insertSafeBlock(`<h3 class="text-xl font-semibold mt-6 mb-3 text-foreground">${escapeHtml(title)}</h3>`)
+  src = src.replace(/\\subsection\*?\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h3 class="text-xl font-semibold mt-6 mb-3">${escapeHtml(title)}</h3>`)
   )
-  src = src.replace(/\\subsubsection\{([^}]*)\}/g, (_m, title) => 
-    insertSafeBlock(`<h4 class="text-lg font-medium mt-4 mb-2 text-foreground/90">${escapeHtml(title)}</h4>`)
+  src = src.replace(/\\subsubsection\*?\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h4 class="text-lg font-medium mt-4 mb-2">${escapeHtml(title)}</h4>`)
   )
 
   // Handle display math environments BEFORE inline math
   src = src.replace(/\\\[([\s\S]*?)\\\]/g, (_m, tex) => {
-    try {
-      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
-    } catch { 
-      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
-    }
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
   })
   
   src = src.replace(/\$\$([\s\S]*?)\$\$/g, (_m, tex) => {
-    try {
-      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
-    } catch { 
-      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
-    }
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
   })
 
   // Handle align, equation environments
   src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, _env, tex) => {
-    try {
-      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
-    } catch { 
-      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
-    }
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
   })
 
   // Handle inline math - CRITICAL: Do this before escaping HTML
   src = src.replace(/\$([^$]+?)\$/g, (_m, tex) => {
-    try {
-      return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
-    } catch { 
-      return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
-    }
+    return insertSafeBlock(safeMathRender(tex, false))
   })
 
   // Handle itemize/enumerate - process items recursively to catch nested math
@@ -122,11 +287,7 @@ const renderedPreview = computed(() => {
       let processedItem = item.trim()
       // Process any remaining inline math in list items
       processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
-        try {
-          return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
-        } catch { 
-          return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
-        }
+        return insertSafeBlock(safeMathRender(tex, false))
       })
       return `<li class="ml-6 mb-2">${processedItem}</li>`
     }).join('')
@@ -138,11 +299,7 @@ const renderedPreview = computed(() => {
       let processedItem = item.trim()
       // Process any remaining inline math in list items
       processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
-        try {
-          return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
-        } catch { 
-          return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
-        }
+        return insertSafeBlock(safeMathRender(tex, false))
       })
       return `<li class="ml-6 mb-2">${processedItem}</li>`
     }).join('')
@@ -200,7 +357,7 @@ async function handleDownload() {
 <template>
   <div
     :class="[
-      'flex w-full h-[calc(100vh-200px)] max-w-7xl flex-col gap-4 transition-all duration-700 lg:flex-row',
+      'flex w-full h-[calc(100vh-56px)] max-w-full flex-col gap-4 transition-all duration-700 lg:flex-row px-4 py-4',
       slideIn ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
     ]"
   >
@@ -211,26 +368,98 @@ async function handleDownload() {
         slideIn ? 'translate-x-0 opacity-100' : '-translate-x-12 opacity-0',
       ]"
     >
-      <div class="flex items-center gap-2 border-b border-border px-5 py-3 flex-shrink-0">
-        <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
-        </svg>
-        <span class="text-sm font-medium text-foreground">Original</span>
+      <div class="flex items-center justify-between gap-4 border-b border-border px-5 py-3 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
+          </svg>
+          <span class="text-sm font-medium text-foreground">Original</span>
+        </div>
+        <div class="flex items-center gap-2 min-w-[140px]">
+          <input
+            v-model.number="leftZoom"
+            type="range"
+            min="60"
+            max="140"
+            step="5"
+            class="w-24 accent-primary"
+          />
+          <span class="w-10 text-right text-xs text-muted-foreground">{{ leftZoom }}%</span>
+        </div>
       </div>
-      <div class="flex-1 flex items-center justify-center bg-[hsl(var(--background)/0.5)] p-6 overflow-auto">
+      <div class="flex-1 flex flex-col items-center justify-center bg-[hsl(var(--background)/0.5)] p-6 overflow-hidden">
         <!-- PDF viewer -->
-        <iframe
-          v-if="props.isPdf && pdfDataUrl"
-          :src="pdfDataUrl"
-          class="w-full h-full rounded-lg border border-border/50"
-          title="Original PDF"
-        />
+        <div
+          v-if="props.isPdf"
+          class="flex flex-col w-full h-full bg-white rounded-lg border border-border/50"
+        >
+          <!-- Loading state -->
+          <div v-if="pdfLoading" class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+              <p class="text-muted-foreground text-sm">Loading PDF...</p>
+            </div>
+          </div>
+          
+          <!-- Error state -->
+          <div v-else-if="pdfError" class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+              <svg class="h-16 w-16 text-destructive mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
+              </svg>
+              <p class="text-destructive text-sm font-medium">{{ pdfError }}</p>
+            </div>
+          </div>
+          
+          <!-- PDF content -->
+          <div v-else-if="pdfDoc" class="flex-1 flex flex-col w-full h-full">
+            <div class="flex-1 flex items-center justify-center overflow-auto bg-gray-100 p-4">
+              <canvas 
+                ref="pdfCanvas" 
+                id="pdf-canvas"
+                class="border-2 border-gray-400 bg-white rounded-lg shadow-2xl"
+                :style="{
+                  display: 'block',
+                  maxWidth: '100%',
+                  height: 'auto',
+                  minWidth: '300px',
+                  minHeight: '400px',
+                  transform: `scale(${leftZoom / 100})`,
+                  transformOrigin: 'top center',
+                }"
+              />
+            </div>
+            <!-- Page navigation -->
+            <div class="flex items-center justify-between border-t border-border/50 px-4 py-3 bg-white rounded-b-lg flex-shrink-0">
+              <button
+                type="button"
+                :disabled="currentPage === 1"
+                class="px-3 py-1.5 text-sm rounded border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary transition-colors"
+                @click="prevPage"
+              >
+                ← Prev
+              </button>
+              <span class="text-sm text-muted-foreground">
+                Page {{ currentPage }} of {{ totalPages }}
+              </span>
+              <button
+                type="button"
+                :disabled="currentPage === totalPages"
+                class="px-3 py-1.5 text-sm rounded border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary transition-colors"
+                @click="nextPage"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
         <!-- Image preview -->
         <img
           v-else-if="!props.isPdf && props.imageUrl"
           :src="props.imageUrl"
           alt="Original handwritten notes"
           class="max-h-full w-full rounded-lg object-contain"
+          :style="{ transform: `scale(${leftZoom / 100})`, transformOrigin: 'top center' }"
         />
         <!-- Fallback placeholder -->
         <div v-else class="flex flex-col items-center gap-3 py-12">
@@ -241,7 +470,7 @@ async function handleDownload() {
             <line x1="16" y1="17" x2="8" y2="17" />
             <line x1="10" y1="9" x2="8" y2="9" />
           </svg>
-          <span class="text-base font-medium text-muted-foreground">{{ props.isPdf ? 'PDF Document' : 'Document' }}</span>
+          <span class="text-base font-medium text-muted-foreground">Document</span>
           <p class="text-sm text-muted-foreground/70">Original content converted to LaTeX</p>
         </div>
       </div>
@@ -288,6 +517,17 @@ async function handleDownload() {
             Preview
           </button>
         </div>
+        <div class="flex items-center gap-2 min-w-[140px]">
+          <input
+            v-model.number="rightZoom"
+            type="range"
+            min="70"
+            max="150"
+            step="5"
+            class="w-24 accent-primary"
+          />
+          <span class="w-10 text-right text-xs text-muted-foreground">{{ rightZoom }}%</span>
+        </div>
       </div>
 
       <!-- Content -->
@@ -296,10 +536,19 @@ async function handleDownload() {
           v-if="activeTab === 'source'"
           v-model="code"
           class="h-full w-full resize-none bg-transparent p-6 font-mono text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
+          :style="{ fontSize: `${Math.round((14 * rightZoom) / 100)}px` }"
           spellcheck="false"
         />
-        <div v-else class="h-full overflow-y-auto bg-white text-black">
-          <div class="max-w-4xl mx-auto p-8 latex-document-preview" v-html="renderedPreview" />
+        <div v-else class="h-full overflow-y-auto bg-white">
+          <div
+            class="max-w-4xl mx-auto p-8 min-h-full latex-document-preview origin-top"
+            :style="{
+              transform: `scale(${rightZoom / 100})`,
+              transformOrigin: 'top left',
+              width: `${100 / (rightZoom / 100)}%`,
+            }"
+            v-html="renderedPreview"
+          />
         </div>
       </div>
 

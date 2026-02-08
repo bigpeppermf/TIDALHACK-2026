@@ -107,7 +107,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Content area -->
-    <div class="relative z-10 flex min-h-[calc(100vh-110px)] flex-col items-center justify-center px-6 py-12">
+    <div :class="[
+      'relative z-10 flex flex-col items-center pt-4',
+      stage === 'result' ? 'min-h-[calc(100vh-56px)]' : 'min-h-[calc(100vh-110px)] justify-center px-6 py-12'
+    ]">
       <!-- Upload -->
       <div v-if="stage === 'upload'" class="w-full max-w-2xl">
         <div class="mb-8 text-center">
@@ -147,7 +150,7 @@ onUnmounted(() => {
         v-if="stage === 'result'"
         :image-url="imageUrl"
         :is-pdf="isPdf"
-        :pdf-file="uploadedFile"
+        :pdf-file="uploadedFile ?? undefined"
         :latex="latexOutput"
         @reset="handleReset"
       />

@@ -2,7 +2,6 @@
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import HeroSection from '@/components/landing/HeroSection.vue'
 import FeaturesGrid from '@/components/landing/FeaturesGrid.vue'
-import HowItWorks from '@/components/landing/HowItWorks.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 </script>
 
@@ -11,7 +10,6 @@ import AppFooter from '@/components/layout/AppFooter.vue'
     <AppNavbar />
     <HeroSection />
     <FeaturesGrid />
-    <HowItWorks />
     <AppFooter />
   </main>
 </template>

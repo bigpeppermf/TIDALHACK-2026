@@ -34,7 +34,7 @@ npm run dev   # → http://localhost:5173
 ## Vue Router Setup
 
 ```typescript
-// src/frontend/src/router/index.ts
+// frontend/src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import ConvertPage from '../views/ConvertPage.vue'
@@ -168,7 +168,7 @@ npm install katex
 ```
 
 ```vue
-<!-- src/frontend/src/components/LatexPreview.vue -->
+<!-- frontend/src/components/LatexPreview.vue -->
 <script setup>
 import { computed } from 'vue'
 import katex from 'katex'
@@ -209,7 +209,7 @@ npx shadcn-vue@latest init
 # Prompts: style (New York or Default), base color, CSS variables (Yes)
 ```
 
-Components are installed into `src/frontend/src/components/ui/`.
+Components are installed into `frontend/src/components/ui/`.
 
 ### Button (variants: default, outline, secondary, ghost, destructive)
 
@@ -334,7 +334,7 @@ npx shadcn-vue@latest add tooltip
 ## useConvert Composable
 
 ```typescript
-// src/frontend/src/composables/useConvert.ts
+// frontend/src/composables/useConvert.ts
 import { ref } from 'vue'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -377,7 +377,7 @@ export function useConvert() {
 ## useExport Composable
 
 ```typescript
-// src/frontend/src/composables/useExport.ts
+// frontend/src/composables/useExport.ts
 
 export function useExport() {
   function downloadTex(latex: string, filename = 'notes') {

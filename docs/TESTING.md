@@ -253,5 +253,5 @@ curl -X POST http://localhost:8000/api/export \
 cd src/backend && pytest tests/ -v
 
 # Run vitest
-cd src/frontend && npx vitest run
+cd frontend && npx vitest run
 ```

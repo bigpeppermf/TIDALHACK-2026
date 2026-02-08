@@ -40,7 +40,7 @@ Only the **3 screens you'll demo**:
 Use Figma's **Inspect** panel to grab values. Paste them into your Tailwind CSS config:
 
 ```css
-/* src/frontend/src/style.css — Tailwind v4 theme */
+/* frontend/src/style.css — Tailwind v4 theme */
 @import "tailwindcss";
 
 @theme {
@@ -70,7 +70,7 @@ Use Figma's **Inspect** panel to grab values. Paste them into your Tailwind CSS 
 - **Logo** → SVG or PNG
 - **Hero image** → webp (smaller file size)
 
-Put assets in `src/frontend/public/` or `src/frontend/src/assets/`.
+Put assets in `frontend/public/` or `frontend/src/assets/`.
 
 ---
 
@@ -79,7 +79,7 @@ Put assets in `src/frontend/public/` or `src/frontend/src/assets/`.
 This is already in your checklist. Quick refresher:
 
 ```bash
-cd src/frontend
+cd frontend
 npm create vue@latest .
 # TypeScript ✅, Vue Router ✅, Pinia ❌, ESLint ❌
 
@@ -94,7 +94,7 @@ npx shadcn-vue@latest add button card input textarea sonner
 ### Vite Config (Tailwind v4 Plugin)
 
 ```typescript
-// src/frontend/vite.config.ts
+// frontend/vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
@@ -110,7 +110,7 @@ export default defineConfig({
 ### Import Tailwind in Your CSS
 
 ```css
-/* src/frontend/src/style.css */
+/* frontend/src/style.css */
 @import "tailwindcss";
 
 @theme {
@@ -567,7 +567,7 @@ If you want a live URL for the demo:
 ```bash
 # Option 1: Vercel (fastest)
 npm i -g vercel
-cd src/frontend
+cd frontend
 vercel
 
 # Option 2: Netlify

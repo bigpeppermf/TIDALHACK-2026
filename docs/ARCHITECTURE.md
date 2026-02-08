@@ -115,7 +115,7 @@ BACKEND_URL=http://localhost:8000
 
 Frontend also needs a `VITE_API_URL` in its own env or hardcoded:
 ```bash
-# src/frontend/.env
+# frontend/.env
 VITE_API_URL=http://localhost:8000
 ```
 

@@ -230,8 +230,9 @@ def post_process_latex(raw_latex: str) -> str:
 
 ```python
 # src/backend/app/routes/convert.py
-from fastapi import APIRouter, UploadFile, File, Query, HTTPException
+import io
 import time
+from fastapi import APIRouter, UploadFile, File, Query, HTTPException
 
 router = APIRouter()
 
@@ -241,20 +242,28 @@ async def convert(
     context: str = Query(default="general")
 ):
     # Validate file type
-    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
-        raise HTTPException(422, detail="Supported formats: jpeg, png, webp")
+    if file.content_type != "application/pdf":
+        raise HTTPException(422, detail="Supported format: pdf")
     
     # Read and validate size
     file_bytes = await file.read()
     if len(file_bytes) > 10 * 1024 * 1024:
         raise HTTPException(413, detail="File too large (max 10MB)")
+    if not file_bytes.startswith(b"%PDF"):
+        raise HTTPException(422, detail="Invalid PDF file")
     
     start = time.time()
     
-    # Pipeline: preprocess → Gemini → post-process
-    base64_img = preprocess_image(file_bytes)
-    raw_latex = convert_image_to_latex(base64_img, context)
-    latex = post_process_latex(raw_latex)
+    # Pipeline: PDF → images → preprocess → Gemini → post-process → combine
+    images = pdf_to_images(temp_pdf_path, max_pages=5)
+    page_bodies = []
+    for img in images:
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        base64_img = preprocess_image(buf.getvalue())
+        raw_latex = convert_image_to_latex(base64_img, context)
+        page_bodies.append(extract_document_body(raw_latex))
+    latex = wrap_latex_document("\n\n".join(page_bodies))
     
     elapsed = round((time.time() - start) * 1000)
     
@@ -297,7 +306,7 @@ async def export_tex(req: ExportRequest):
 | Situation | HTTP Code | What to Return |
 |---|---|---|
 | No file uploaded | 400 | `"No file provided"` |
-| Wrong file type | 422 | `"Supported formats: jpeg, png, webp"` |
+| Wrong file type | 422 | `"Supported format: pdf"` |
 | File > 10MB | 413 | `"File too large (max 10MB)"` |
 | Gemini rate limited | 429 | `"Rate limit — try again in a few seconds"` |
 | Gemini API down | 503 | `"Service unavailable"` |
@@ -310,9 +319,9 @@ async def export_tex(req: ExportRequest):
 - Test with `curl` before connecting frontend:
   ```bash
   curl -X POST http://localhost:8000/api/convert \
-    -F "file=@test_notes.jpg" \
+    -F "file=@test_notes.pdf" \
     -F "context=math"
   ```
-- Try 5+ different image types (see CHECKLIST.md Phase 2)
+- Try 5+ different PDF scans (see CHECKLIST.md Phase 2)
 - Log processing times — if > 10s, image might be too large
 - The **prompt matters more than the code** — iterate on it

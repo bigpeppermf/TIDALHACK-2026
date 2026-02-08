@@ -1,0 +1,256 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\begin{document}
+\section*{MATH 151 Section 3.4 The Chain Rule}
+
+Find derivatives of the following compositions of functions \hfill \textbf{Power Rule}
+
+\begin{align*}
+(1) \quad h(x) &= (2x-1)^2 = (2x-1)(2x-1) = 4x^2-4x+1 \quad &&| \quad ((2x-1)^2)' = 2(2x-1)^1 \\
+\text{So } h'(x) &= 8x-4 = 2(4x-2) = 2(2x-1)\cdot 2 \\
+(2) \quad h(x) &= (3x+1)^2 = (3x+1)(3x+1) = 9x^2+6x+1 \quad &&| \quad ((3x+1)^2)' = 2(3x+1) \\
+\text{So } h'(x) &= 18x+6 = 2(9x+3) = 2(3x+1)\cdot 3 \\
+(3) \quad h(x) &= (x^2+1)^2 = (x^2+1)(x^2+1) = x^4+2x^2+1 \quad &&| \quad ((x^2+1)^2)' = 2(x^2+1) \\
+\text{So } h'(x) &= 4x^3+4x = 2(2x^3+2x) = 2(x^2+1)\cdot 2x \\
+(4) \quad h(x) &= \sqrt{5x+1} = (5x+1)^{\frac{1}{2}} \\
+h'(x) &= \frac{1}{2}(5x+1)^{-\frac{1}{2}}5 \\
+\end{align*}
+\begin{align*}
+&& h(x) &= \frac{3}{4x-1} = 3(4x-1)^{-1} \\
+&& h'(x) &= \boxed{-3(4x-1)^{-2}4}
+\end{align*}
+
+Note that each function $h$ is indeed compositions of functions, $h = f \circ g = f(g(x))$.
+For the derivative of $f(g(x))$, you need $\underline{f'(g(x))}$ as well as an extra term, namely $g'(x)$.
+
+\section*{The Chain Rule}
+Suppose the derivatives $g'(x)$ and $f'(g(x))$ both exist. Then the composition $F = f \circ g = f(g(x))$ has the derivative
+\begin{align*}
+F'(x) &= f'(g(x))\,g'(x)
+\end{align*}
+% [Diagram: x maps to g(x) via g, and g(x) maps to f(g(x)) via f, with f o g mapping x to f(g(x))]
+\framebox[3in][c]{Placeholder for Diagram}
+
+In Leibniz notation, if $y = f(u)$ and $u = u(x)$ are both differentiable functions, then
+\begin{align*}
+\frac{dy}{dx} &= \frac{df}{du}\frac{du}{dx}
+\end{align*}
+% [Diagram: x maps to u=u(x) via u, and u maps to f(u)=y via f, with a combined arrow from x to f(u)=y]
+\framebox[3in][c]{Placeholder for Diagram}
+
+Is it really canceling? $\frac{df}{\cancel{du}}\frac{\cancel{du}}{dx} = \frac{df}{dx} = \frac{dy}{dx}$
+
+NO and YES in sect 3.10 for now
+
+\section*{The Power Rule combined with the Chain Rule (Generalized Power Rule)}
+If $n$ is a real number then
+\begin{align*}
+\frac{d}{dx} (g(x))^n &= n(g(x))^{n-1} g'(x) \quad \text{or} \quad \frac{d}{dx} (U)^n = n U^{n-1} \frac{du}{dx}
+\end{align*}
+
+\section*{Example 1 Differentiate the following functions.}
+
+\begin{align*}
+\text{(1) } y &= (1+2x)^{10} = (1+2x)(1+2x)\ldots(1+2x) \\
+y' &= 10(1+2x)^9 \cdot 2
+\end{align*}
+
+\begin{align*}
+\text{(2) } y &= \frac{1}{(1+2x)^{2024}} = (1+2x)^{-2024} \\
+y' &= -2024(1+2x)^{-2025} \cdot 2
+\end{align*}
+
+\begin{align*}
+\text{(3) } F(x) &= \sqrt[3]{x^2+2x-3} = (x^2+2x-3)^{\frac{1}{3}} \\
+F'(x) &= \frac{1}{3}(x^2+2x-3)^{-\frac{2}{3}}(2x+2)
+\end{align*}
+
+\begin{align*}
+\text{(4) } f(x) &= \frac{1}{\sqrt[4]{x^2+x+1}} = (x^2+x+1)^{-\frac{1}{4}} \\
+f'(x) &= -\frac{1}{4}(x^2+x+1)^{-\frac{5}{4}}(2x+1)
+\end{align*}
+
+\begin{align*}
+\text{(5) } y &= (2x+1)^5(x^3-x+1)^4 \\
+y' &= \left((2x+1)^5\right)' \cdot (x^3-x+1)^4 + (2x+1)^5 \left((x^3-x+1)^4\right)' \\
+&= 5(2x+1)^4 \cdot 2 (x^3-x+1)^4 + (2x+1)^5 \cdot 4(x^3-x+1)^3 (3x^2-1)
+\end{align*}
+
+\begin{align*}
+\text{(6) } g(x) &= \sin 2x \\
+x &\to 2x \xrightarrow{\text{sin}} \sin(2x) \\
+g'(x) &= \cos(2x) \cdot 2
+\end{align*}
+
+\begin{align*}
+\text{(7) } f(x) &= \sin \frac{1}{x} \\
+x &\xrightarrow{x^{-1}} \frac{1}{x} \xrightarrow{\text{sin}} \sin \frac{1}{x} \\
+f' &= \cos\left(\frac{1}{x}\right) \cdot (-x^{-2})
+\end{align*}
+
+(8) $g(x) = \sin x^2 + (\cos x)^2$
+\begin{align*}
+g'(x) &= \cos x^2 \cdot 2x + 2\cos x \cdot (-\sin x)
+\end{align*}
+
+(9) $g(x) = \tan(\cos x)$
+\begin{align*}
+g'(x) &= \sec^2(\cos x)(\cos x)' \\
+&= \sec^2(\cos x)(-\sin x)
+\end{align*}
+
+(10) $g(x) = \tan x \cos x$
+\begin{align*}
+g'(x) &= (\tan x)'\cos x + \tan x(\cos x)' \\
+&= \sec^2 x \cos x + \tan x(-\sin x)
+\end{align*}
+
+(11) $G(t) = e^{7t \sin 2t}$
+% [Diagram: Chain rule breakdown for exponential function]
+\begin{align*}
+G'(t) &= e^{7t \sin 2t} (7t \sin 2t)' \\
+&= e^{7t \sin 2t} (7 \sin 2t + 7t \cos 2t \cdot 2)
+\end{align*}
+
+(12) $h(t) = \left(\frac{t^4+5}{t^2+5}\right)^3$
+\begin{align*}
+h'(t) &= 3 \left(\frac{t^4+5}{t^2+5}\right)^2 \left(\frac{t^4+5}{t^2+5}\right)' \\
+&= 3 \left(\frac{t^4+5}{t^2+5}\right)^2 \left(\frac{4t^3(t^2+5) - (t^4+5)2t}{(t^2+5)^2}\right)
+\end{align*}
+
+(13) $y = \sin^2(\cos 3x) = (\sin(\cos 3x))^2$
+% [Diagram: Chain rule breakdown for nested trigonometric function]
+\begin{align*}
+y' &= 2 \sin(\cos 3x) (\sin(\cos 3x))' \\
+&= 2 \sin(\cos 3x) \cos(\cos 3x) (\cos 3x)' \\
+&= 2 \sin(\cos 3x) \cos(\cos 3x) (-\sin 3x) (3x)' \\
+&= 2 (-\sin 3x) \cdot 3 \sin(\cos 3x) \cos(\cos 3x)
+\end{align*}
+
+Example 2 Find $h'(4)$ for $h(x) = \sqrt{4+5f(x)}$ where $f(4)=9$ and $f'(4)=7$
+\begin{align*}
+&= (4+5f(x))^{\frac{1}{2}} \\
+h'(x) &= \frac{1}{2} (4+5f(x))^{-\frac{1}{2}} \cdot 5f'(x) \\
+h'(4) &= \frac{1}{2} (4+5f(4))^{-\frac{1}{2}} \cdot 5f'(4) = \frac{1}{2} (4+5 \cdot 9)^{-\frac{1}{2}} \cdot 5 \cdot 7 \\
+&= \frac{1}{2} (4+45)^{-\frac{1}{2}} \cdot 35 \\
+&= \frac{1}{2} (49)^{-\frac{1}{2}} \cdot 35 \\
+&= \frac{1}{2} \cdot \frac{1}{\sqrt{49}} \cdot 35 \\
+&= \frac{1}{2} \cdot \frac{1}{7} \cdot 35 = \frac{35}{14} = \frac{5}{2}
+\end{align*}
+
+Derivative of $y=a^x$
+For any $a > 0$, $(e^{\ln a}) = a$ (why?)
+\begin{align*}
+a &\xrightarrow{\ln} \ln a \xrightarrow{\text{exp}} e^{\ln a} = a \\
+\intertext{By the chain rule,}
+\ln x &\text{ is the inverse} \\
+&\text{of } e^x \\
+\frac{d}{dx} a^x &= \frac{d}{dx} (e^{\ln a})^x \\
+&= \frac{d}{dx} (e^{(\ln a)x}) \\
+&= e^{(\ln a)x} \cdot \ln a \\
+&= a^x \cdot \ln a
+\end{align*}
+
+Theorem The derivative of exponential function $y=a^x$ is
+\begin{align*}
+(a^x)' &= \ln a \cdot a^x \\
+(e^x)' &= \ln e \cdot e^x \\
+&= e^x
+\end{align*}
+For example, the tangent line of $y=2^x$ at $x=0$ has the slope
+$(2^x)' = \ln 2 \cdot 2^x \implies \ln 2 \cdot 2^0 = \ln 2 \cdot 1 = \ln 2$
+
+% [Diagram: Graph of y=2^x and its tangent line at x=0 with slope ln 2]
+\begin{center}
+    \fbox{
+        \parbox[c][5cm][c]{8cm}{
+            \centering
+            Placeholder for graph of $y=2^x$ and its tangent at $x=0$.
+        }
+    }
+\end{center}
+
+Example 3 (1) $f(x) = 4^{\cos \pi x}$
+\begin{align*}
+X &\longrightarrow \cos \pi x \longrightarrow 4^{\cos \pi x} \\
+f'(x) &= \ln 4 \cdot 4^{\cos \pi x} (\cos \pi x)' \\
+&= \ln 4 \cdot 4^{\cos \pi x} (-\sin \pi x) \pi \\
+\end{align*}
+
+(2) $f(x) = x^6 4^{(x^6+2)}$
+\begin{align*}
+f'(x) &= 6x^5 \cdot 4^{(x^6+2)} + x^6 \cdot \ln 4 \cdot 4^{(x^6+2)} \cdot (6x^5)
+\end{align*}
+
+What about the derivative of $(x^x)$? $(x^x)' = \ln x \cdot x^x$ ? No
+\section*{Logarithmic Differentiation}
+
+\vspace{1cm}
+\centering 4
+
+Example 4 A table of values for $f, g, f'$, and $g'$ is given.
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+$x$ & $f(x)$ & $g(x)$ & $f'(x)$ & $g'(x)$ \\
+\hline
+1 & 3 & 2 & 9 & 4 \\
+2 & 1 & 8 & 8 & -2 \\
+3 & 7 & 2 & 3 & -7 \\
+\hline
+\end{tabular}
+\end{center}
+
+(1) If $h(x) = f(g(x))$, find $h'(1)$
+\begin{align*}
+h'(x) &= f'(g(x)) \cdot g'(x) \\
+\Rightarrow h'(1) &= f'(g(1)) \cdot g'(1) \\
+&= f'(2) \cdot 4 \\
+&= 8 \cdot 4 \\
+&= 32.
+\end{align*}
+
+(2) If $H(x) = g(f(x))$, find $H'(2)$.
+\begin{align*}
+H'(x) &= g'(f(x)) f'(x) \\
+\Rightarrow H'(2) &= g'(f(2)) f'(2) \\
+&= g'(1) \cdot 8 \\
+&= 4 \cdot 8 \\
+&= 32
+\end{align*}
+
+Consider the cycle $(\cos x)' \to (\cos x)'' \to (\cos x)''' \to (\cos x)''''$
+\begin{align*}
+-\sin x \quad -\cos x \quad \sin x \quad \cos x \\
+\quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \downarrow
+\end{align*}
+
+Quiz 4
+Example 5 Find the $2023^{\text{th}}$ derivative of $y = \cos(2x)$.
+$2020 + 3 = 2023$
+\begin{align*}
+2^{2023} \sin 2x
+\end{align*}
+$(e^{-x} f(x))' = e^{-x} (-f(x) + f'(x))$
+
+Example 6 Find the $2024^{\text{th}}$ derivative of $f(x) = xe^{-x}$.
+\begin{align*}
+f'(x) &= e^{-x}(-x+1), & f''(x) &= e^{-x}(x-1-1) \\
+f'''(x) &= e^{-x}(-x+2+1), & f^{(4)}(x) &= e^{-x}(x-3-1) \\
+f^{(2023)}(x) &= e^{-x}(-x+2023), & f^{(2024)}(x) &= e^{-x}(x-2024)
+\end{align*}
+
+Example 7 Find $\frac{d^{2025}}{dx^{2025}}\left(\frac{1}{x}\right)$.
+\begin{align*}
+f(x) &= x^{-1} \\
+f'(x) &= -x^{-2} \\
+f''(x) &= 2 \cdot x^{-3} \\
+f'''(x) &= -3 \cdot 2 \cdot 1 \cdot x^{-4} \\
+f^{(4)}(x) &= +4 \cdot 3 \cdot 2 \cdot 1 \cdot x^{-5} \\
+f^{(2025)}(x) &= -2025! x^{-2026} \\
+1 \cdot 2 \cdot 3 &\cdots \cdot 2025
+\end{align*}
+\end{document}

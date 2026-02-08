@@ -201,6 +201,12 @@ Notes:
 - The LaTeX script expects processed files named `page_*.processed.jpg` in `tests/image_tests/out`.
 - If you prefer a different folder or filename pattern, update `tests/latex_tests/pdf_to_latex_test.py`.
 
+#### API tests
+
+```bash
+python -m pytest tests/api_tests -v
+```
+
 ### 🎨 Frontend — Vitest (if scaffolded with testing)
 
 ```bash

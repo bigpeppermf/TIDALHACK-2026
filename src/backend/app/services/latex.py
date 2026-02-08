@@ -39,3 +39,23 @@ def post_process_latex(raw_latex: str) -> str:
         latex = latex + "\n" + DOCUMENT_END
 
     return latex.strip()
+
+
+def extract_document_body(raw_latex: str) -> str:
+    """
+    Return only the LaTeX document body (between \\begin{document} and \\end{document}).
+    If boundaries are missing, return the sanitized string.
+    """
+    latex = post_process_latex(raw_latex)
+    begin = latex.find("\\begin{document}")
+    end = latex.rfind("\\end{document}")
+    if begin == -1 or end == -1 or end <= begin:
+        return latex
+    return latex[begin + len("\\begin{document}") : end].strip()
+
+
+def wrap_latex_document(body: str) -> str:
+    """
+    Wrap a LaTeX body in a single document preamble and environment.
+    """
+    return (DEFAULT_PREAMBLE + body + "\n" + DOCUMENT_END).strip()

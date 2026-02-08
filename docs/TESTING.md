@@ -23,8 +23,8 @@ We have **3 levels** of testing. For a 24-hour hackathon, focus on **Level 1 fir
 
 | # | Test | How | Expected Result |
 |---|---|---|---|
-| B1 | Health check | `curl http://localhost:8000/api/health` | `{ "status": "ok" }` |
-| B2 | Convert — clean handwriting | `curl -X POST http://localhost:8000/api/convert -F "file=@clean_notes.jpg"` | `{ "success": true, "latex": "\\documentclass..." }` |
+| B1 | Health check | `curl http://localhost:8000/api/health` | `{ "status": "ok", "version": "1.0.0" }` |
+| B2 | Convert — clean handwriting | `curl -X POST http://localhost:8000/api/convert -F "file=@clean_notes.pdf"` | `{ "success": true, "latex": "\\documentclass..." }` |
 | B3 | Convert — math equations | Same curl with a photo of math | LaTeX with `\int`, `\sum`, `\frac`, etc. |
 | B4 | Convert — whiteboard photo | Same curl with whiteboard photo | LaTeX output (may be lower quality, that's ok) |
 | B5 | Export endpoint | `curl -X POST http://localhost:8000/api/export -H "Content-Type: application/json" -d '{"latex": "\\documentclass{article}", "filename": "test"}'` | File download response |
@@ -35,13 +35,13 @@ We have **3 levels** of testing. For a 24-hour hackathon, focus on **Level 1 fir
 | # | Test | How | Expected Result |
 |---|---|---|---|
 | F1 | Pages load | Open `localhost:5173` and `localhost:5173/convert` | Both pages render without errors |
-| F2 | Upload works | Drag-and-drop a JPEG onto upload zone | Image preview appears |
-| F3 | Upload via picker | Click file picker, select an image | Image preview appears |
-| F4 | Full flow | Upload image → wait → see result | LaTeX appears in editor + KaTeX preview renders |
+| F2 | Upload works | Drag-and-drop a PDF onto upload zone | PDF filename appears |
+| F3 | Upload via picker | Click file picker, select a PDF | PDF filename appears |
+| F4 | Full flow | Upload PDF → wait → see result | LaTeX appears in editor + KaTeX preview renders |
 | F5 | Copy button | Click "Copy to Clipboard" | LaTeX string in clipboard (paste to verify) |
 | F6 | Download button | Click "Download .tex" | `.tex` file downloads, open it, content matches |
 | F7 | Live editing | Edit LaTeX in editor | KaTeX preview updates in real time |
-| F8 | Loading state | Upload image, watch during processing | Spinner/animation shows, disappears when done |
+| F8 | Loading state | Upload PDF, watch during processing | Spinner/animation shows, disappears when done |
 
 ---
 
@@ -51,13 +51,13 @@ We have **3 levels** of testing. For a 24-hour hackathon, focus on **Level 1 fir
 
 | # | Test | Input | Expected |
 |---|---|---|---|
-| BE1 | Wrong file type | Upload a `.txt` or `.pdf` file | 422 error: "Supported formats: jpeg, png, webp" |
-| BE2 | Oversized file | Upload a 15MB image | 413 error: "File too large (max 10MB)" |
+| BE1 | Wrong file type | Upload a `.txt` or `.jpg` file | 422 error: "Supported format: pdf" |
+| BE2 | Oversized file | Upload a 15MB PDF | 413 error: "File too large (max 10MB)" |
 | BE3 | No file sent | POST with empty body | 400 or 422 error |
-| BE4 | Corrupted image | Upload a renamed `.txt` as `.jpg` | Graceful error, not a crash |
-| BE5 | Very small image | Upload a 10x10px image | Returns something (may be low quality) |
-| BE6 | Blank/white image | Upload a blank white image | Returns minimal/empty LaTeX, doesn't crash |
-| BE7 | Rotated image | Upload a 90° rotated photo | Still attempts recognition |
+| BE4 | Corrupted PDF | Upload a renamed `.txt` as `.pdf` | Graceful error, not a crash |
+| BE5 | Single-page PDF | Upload a 1-page PDF | Returns something (may be low quality) |
+| BE6 | Blank/white page | Upload a PDF with a blank page | Returns minimal/empty LaTeX, doesn't crash |
+| BE7 | Rotated page | Upload a PDF with a 90° rotated page | Still attempts recognition |
 | BE8 | Invalid context param | `?context=foobar` | Falls back to "general" or returns error |
 | BE9 | Rapid requests | Send 5 requests in 2 seconds | Handles gracefully (queue or rate limit) |
 | BE10 | API key missing | Unset `GEMINI_API_KEY` | Clear error message, not unhandled exception |
@@ -109,9 +109,9 @@ def test_health():
 ```python
 import os
 
-def test_convert_valid_image():
-    with open("tests/fixtures/clean_notes.jpg", "rb") as f:
-        r = client.post("/api/convert", files={"file": ("test.jpg", f, "image/jpeg")})
+def test_convert_valid_pdf():
+    with open("tests/fixtures/clean_notes.pdf", "rb") as f:
+        r = client.post("/api/convert", files={"file": ("test.pdf", f, "application/pdf")})
     assert r.status_code == 200
     data = r.json()
     assert data["success"] is True
@@ -124,7 +124,7 @@ def test_convert_invalid_type():
 
 def test_convert_oversized():
     big_file = b"x" * (11 * 1024 * 1024)  # 11MB
-    r = client.post("/api/convert", files={"file": ("big.jpg", big_file, "image/jpeg")})
+    r = client.post("/api/convert", files={"file": ("big.pdf", big_file, "application/pdf")})
     assert r.status_code == 413
 ```
 
@@ -235,20 +235,20 @@ describe('useExport', () => {
 
 ## 📷 Test Image Set
 
-Create a `tests/fixtures/` folder with these images:
+Create a `tests/fixtures/` folder with these PDFs:
 
 | # | Image | Type | Tests |
 |---|---|---|---|
-| 1 | `clean_notes.jpg` | Black pen on white paper | Baseline — should work well |
-| 2 | `math_equations.jpg` | Calculus (integrals, limits) | Math symbol recognition |
-| 3 | `whiteboard.jpg` | Whiteboard photo with glare | Handles noise/glare |
-| 4 | `pencil_notes.jpg` | Light pencil on lined paper | Low contrast handling |
-| 5 | `dense_math.jpg` | Full page of dense equations | Large output handling |
-| 6 | `mixed_content.jpg` | Text + equations + diagrams | Structure preservation |
-| 7 | `rotated.jpg` | Photo taken at an angle | Orientation handling |
-| 8 | `blank.jpg` | Blank white page | Edge case — empty input |
+| 1 | `clean_notes.pdf` | Black pen on white paper | Baseline — should work well |
+| 2 | `math_equations.pdf` | Calculus (integrals, limits) | Math symbol recognition |
+| 3 | `whiteboard.pdf` | Whiteboard photo with glare | Handles noise/glare |
+| 4 | `pencil_notes.pdf` | Light pencil on lined paper | Low contrast handling |
+| 5 | `dense_math.pdf` | Full page of dense equations | Large output handling |
+| 6 | `mixed_content.pdf` | Text + equations + diagrams | Structure preservation |
+| 7 | `rotated.pdf` | Photo taken at an angle | Orientation handling |
+| 8 | `blank.pdf` | Blank white page | Edge case — empty input |
 
-> **Tip:** Take these photos with your phone during setup. Real photos are better test data than synthetic images.
+> **Tip:** Take these photos with your phone during setup and export to PDF. Real photos are better test data than synthetic images.
 
 ---
 
@@ -258,11 +258,11 @@ Create a `tests/fixtures/` folder with these images:
 # Backend health
 curl http://localhost:8000/api/health
 
-# Convert an image
-curl -X POST http://localhost:8000/api/convert -F "file=@tests/fixtures/clean_notes.jpg"
+# Convert a PDF
+curl -X POST http://localhost:8000/api/convert -F "file=@tests/fixtures/clean_notes.pdf"
 
 # Convert with math context
-curl -X POST "http://localhost:8000/api/convert?context=math" -F "file=@tests/fixtures/math_equations.jpg"
+curl -X POST "http://localhost:8000/api/convert?context=math" -F "file=@tests/fixtures/math_equations.pdf"
 
 # Export LaTeX
 curl -X POST http://localhost:8000/api/export \

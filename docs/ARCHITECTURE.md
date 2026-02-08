@@ -50,7 +50,7 @@ This is what both teammates agree on. Frontend sends requests in this shape, bac
 
 **Request:**
 - Content-Type: `multipart/form-data`
-- Body field: `file` (image — jpeg, png, or webp, max 10MB)
+- Body field: `file` (PDF, max 10MB)
 - Query param: `context` (optional — `"general"` | `"math"` | `"chemistry"` | `"physics"`)
 
 **Success Response (200):**
@@ -58,7 +58,7 @@ This is what both teammates agree on. Frontend sends requests in this shape, bac
 {
   "success": true,
   "latex": "\\documentclass{article}\n\\begin{document}\n...\n\\end{document}",
-  "raw_text": "Optional plain text extraction",
+  "raw_text": "Raw Gemini text output (all pages combined)",
   "processing_time_ms": 2340
 }
 ```
@@ -67,8 +67,9 @@ This is what both teammates agree on. Frontend sends requests in this shape, bac
 
 | Code | When | Body |
 |---|---|---|
-| 422 | Bad file format | `{ "success": false, "error": "Supported formats: jpeg, png, webp" }` |
+| 422 | Bad file format | `{ "success": false, "error": "Supported format: pdf" }` |
 | 413 | File > 10MB | `{ "success": false, "error": "File too large (max 10MB)" }` |
+| 429 | Gemini rate limit | `{ "success": false, "error": "Gemini rate limit" }` |
 | 500 | Gemini API error | `{ "success": false, "error": "Gemini API error: ..." }` |
 | 503 | Gemini down | `{ "success": false, "error": "Service unavailable" }` |
 
@@ -136,7 +137,8 @@ src/
 │   │   │   ├── gemini.py       # Gemini API wrapper
 │   │   │   └── latex.py        # LaTeX post-processing
 │   │   └── utils/
-│   │       └── image.py        # Image preprocessing (Pillow)
+│   │       ├── image.py        # Image preprocessing (Pillow)
+│   │       └── pdf.py          # PDF → image pages
 │   ├── requirements.txt
 │   └── .env
 │

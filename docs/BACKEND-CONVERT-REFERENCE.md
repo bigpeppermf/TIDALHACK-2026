@@ -11,7 +11,9 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 python-multipart>=0.0.12
-google-genai>=1.0.0
+google-generativeai>=0.8.0
+google-genai>=1.0.0  # optional, not used by current code
+pdf2image>=1.17.0
 Pillow>=11.0.0
 python-dotenv>=1.0.0
 pydantic>=2.0.0
@@ -29,8 +31,11 @@ pip install -r requirements.txt
 
 ```python
 # src/backend/app/main.py
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,11 +44,25 @@ app = FastAPI(title="monogram API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "error": exc.detail},
+    )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, _exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "error": "Internal server error"},
+    )
 
 @app.get("/api/health")
 async def health():
@@ -57,65 +76,31 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-## Gemini API — Option A: Official SDK (Recommended)
+## Gemini API — Current SDK (google-generativeai)
 
 ```python
 # src/backend/app/services/gemini.py
 import os
-import base64
-from google import genai
-from google.genai import types
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+import google.generativeai as genai
 
 def convert_image_to_latex(base64_image: str, context: str = "general") -> str:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing GEMINI_API_KEY")
+
+    genai.configure(api_key=api_key)
     prompt = get_system_prompt(context)
-    image_bytes = base64.b64decode(base64_image)
-    
-    response = client.models.generate_content(
-        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-        contents=[
-            types.Part.from_text(prompt),
-            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-        ]
+
+    model = genai.GenerativeModel(
+        model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        system_instruction=prompt,
     )
-    
+
+    response = model.generate_content([
+        {"mime_type": "image/jpeg", "data": base64_image}
+    ])
     return response.text
 ```
-
----
-
-## Gemini API — Option B: OpenAI-Compatible
-
-```python
-# Alternative if you prefer OpenAI client style
-import os
-import base64
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.getenv("GEMINI_API_KEY"),
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
-
-def convert_image_to_latex(base64_image: str, context: str = "general") -> str:
-    prompt = get_system_prompt(context)
-    
-    response = client.chat.completions.create(
-        model="gemini-2.5-flash",
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-            ]
-        }]
-    )
-    
-    return response.choices[0].message.content
-```
-
-> **Pick ONE approach and stick with it.** Don't mix.
 
 ---
 
@@ -231,6 +216,8 @@ def post_process_latex(raw_latex: str) -> str:
 ```python
 # src/backend/app/routes/convert.py
 import io
+import os
+import tempfile
 import time
 from fastapi import APIRouter, UploadFile, File, Query, HTTPException
 
@@ -254,22 +241,38 @@ async def convert(
     
     start = time.time()
     
-    # Pipeline: PDF → images → preprocess → Gemini → post-process → combine
-    images = pdf_to_images(temp_pdf_path, max_pages=5)
-    page_bodies = []
-    for img in images:
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        base64_img = preprocess_image(buf.getvalue())
-        raw_latex = convert_image_to_latex(base64_img, context)
-        page_bodies.append(extract_document_body(raw_latex))
-    latex = wrap_latex_document("\n\n".join(page_bodies))
+    temp_pdf_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(file_bytes)
+            temp_pdf_path = tmp.name
+
+        # Pipeline: PDF → images → preprocess → Gemini → post-process → combine
+        images = pdf_to_images(temp_pdf_path, max_pages=5)
+        page_bodies = []
+        raw_pages = []
+        for img in images:
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            base64_img = preprocess_image(buf.getvalue())
+            raw_latex = convert_image_to_latex(base64_img, context)
+            raw_pages.append(raw_latex)
+            page_bodies.append(extract_document_body(raw_latex))
+        latex = wrap_latex_document("\n\n".join(page_bodies))
+        raw_text = "\n\n".join(raw_pages)
+    finally:
+        if temp_pdf_path and os.path.exists(temp_pdf_path):
+            try:
+                os.remove(temp_pdf_path)
+            except OSError:
+                pass
     
     elapsed = round((time.time() - start) * 1000)
     
     return {
         "success": True,
         "latex": latex,
+        "raw_text": raw_text,
         "processing_time_ms": elapsed
     }
 ```
@@ -308,7 +311,7 @@ async def export_tex(req: ExportRequest):
 | No file uploaded | 400 | `"No file provided"` |
 | Wrong file type | 422 | `"Supported format: pdf"` |
 | File > 10MB | 413 | `"File too large (max 10MB)"` |
-| Gemini rate limited | 429 | `"Rate limit — try again in a few seconds"` |
+| Gemini rate limited | 429 | `"Gemini rate limit"` |
 | Gemini API down | 503 | `"Service unavailable"` |
 | Unknown error | 500 | `"Internal server error"` |
 

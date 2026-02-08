@@ -39,14 +39,14 @@
 ### Upload Flow
 
 - [ ] Build `UploadZone.vue` — drag-and-drop area + file picker button
-- [ ] Add image thumbnail preview after file is selected
+- [ ] Add PDF filename preview after file is selected
 - [ ] File validation: only jpeg/png/webp, max 10MB, show error if wrong
 - [ ] Create `useConvert` composable (see FRONTEND-REFERENCE.md)
-- [ ] Wire upload → calls `POST /api/convert` → receives LaTeX string
+- [ ] Wire upload → calls `POST /api/convert` (PDF) → receives LaTeX string
 
 ### Result Display
 
-- [ ] Build `ResultView.vue` — split layout: original image left, LaTeX right
+- [ ] Build `ResultView.vue` — split layout: PDF preview left (or filename), LaTeX right
 - [ ] Build `LatexPreview.vue` — renders LaTeX with KaTeX
 - [ ] Build `LatexEditor.vue` — editable text area (or CodeMirror) for LaTeX source
 - [ ] Wire editor `@input` → live KaTeX preview re-render
@@ -92,7 +92,7 @@
 ### Error States
 
 - [ ] API unreachable → friendly "Server offline" message
-- [ ] Bad image → "Couldn't read this image" message
+- [ ] Bad PDF → "Couldn't read this PDF" message
 - [ ] Gemini error → "Something went wrong, try again" message
 
 ### Responsive
@@ -114,7 +114,7 @@
 
 ## 🎤 Phase 4 — Demo Prep (Hours 18–24)
 
-- [ ] Test all demo images in the UI (3–5 images)
+- [ ] Test all demo PDFs in the UI (3–5 files)
 - [ ] Fix any visual bugs found during testing
 - [ ] Help build slide deck (Problem → Solution → Demo → Tech → Future)
 - [ ] Ensure app looks great on the demo machine/projector resolution
@@ -147,4 +147,4 @@
 - [ ] Connected to backend on `:8000`
 - [ ] App looks good on demo screen resolution
 - [ ] No console errors in browser
-- [ ] All demo images load and display correctly
+- [ ] All demo PDFs load and display correctly

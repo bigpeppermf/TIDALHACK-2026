@@ -23,12 +23,12 @@
 - [ ] `pip install -r requirements.txt`
 - [ ] Create FastAPI app shell in `src/backend/app/main.py`
 - [ ] Add CORS middleware (allow origin `http://localhost:5173`)
-- [ ] Add `GET /api/health` endpoint — return `{ "status": "ok" }`
+- [ ] Add `GET /api/health` endpoint — return `{ "status": "ok", "version": "1.0.0" }`
 - [ ] Verify `uvicorn app.main:app --reload --port 8000` works
-- [ ] Test Gemini API: send a test image, confirm you get text back
+- [ ] Test Gemini API: send a test page image, confirm you get text back
 - [ ] Confirm API key + model work: `gemini-2.5-flash`
 
-**✅ Milestone:** FastAPI running on `:8000`. Gemini API responds to test images.
+**✅ Milestone:** FastAPI running on `:8000`. Gemini API responds to test page images.
 
 ---
 
@@ -62,12 +62,12 @@
 ### Convert Endpoint
 
 - [ ] Create `src/backend/app/routes/convert.py`
-- [ ] `POST /api/convert` — accept `multipart/form-data` with `file` field
+- [ ] `POST /api/convert` — accept `multipart/form-data` with `file` field (PDF)
 - [ ] Accept optional `?context=` query param (default: `"general"`)
-- [ ] Validate file type: only jpeg, png, webp → 422 if wrong
+- [ ] Validate file type: only pdf → 422 if wrong
 - [ ] Validate file size: max 10MB → 413 if too large
-- [ ] Pipeline: validate → preprocess → Gemini → post-process → respond
-- [ ] Return: `{ "success": true, "latex": "...", "processing_time_ms": 1234 }`
+- [ ] Pipeline: validate → PDF to images → preprocess → Gemini → post-process → respond
+- [ ] Return: `{ "success": true, "latex": "...", "raw_text": "...", "processing_time_ms": 1234 }`
 - [ ] Register router in `main.py`
 
 ### Export Endpoint
@@ -80,7 +80,7 @@
 ### Testing
 
 - [ ] Test `/api/convert` with `curl` (see BACKEND-REFERENCE.md)
-- [ ] Test with 5+ different handwriting images
+- [ ] Test with 5+ different handwriting PDFs
 - [ ] Test with: clean pen, pencil, whiteboard, dense math, mixed text+math
 - [ ] Tune the prompt based on what fails
 
@@ -101,7 +101,7 @@
 - [ ] Add `context` query param support: math, chemistry, physics, general
 - [ ] Write `CONTEXT_HINTS` dict with subject-specific prompt additions
 - [ ] `get_system_prompt(context)` returns base prompt + context hint
-- [ ] Test each context variant with appropriate images
+- [ ] Test each context variant with appropriate PDFs
 
 ### Robustness
 
@@ -114,10 +114,10 @@
 ### Nice-to-Have (if time)
 
 - [ ] Rate limiting middleware (prevent API key abuse)
-- [ ] Batch endpoint: `POST /api/convert/batch` — accept multiple images
+- [ ] Batch endpoint: `POST /api/convert/batch` — accept multiple PDFs
 - [ ] PDF export: install `pdflatex`, compile `.tex` → `.pdf` server-side
 - [ ] TIDAL API integration: ambient music endpoint for frontend
-- [ ] Caching: if same image hash is sent twice, return cached result
+- [ ] Caching: if same PDF hash is sent twice, return cached result
 
 **✅ Milestone:** Backend handles all edge cases gracefully. Prompt is well-tuned.
 
@@ -125,8 +125,8 @@
 
 ## 🎤 Phase 4 — Demo Prep (Hours 18–24)
 
-- [ ] Collect 3–5 strong demo images with Teammate 1
-- [ ] Run every demo image through the API, verify clean LaTeX output
+- [ ] Collect 3–5 strong demo PDFs with Teammate 1
+- [ ] Run every demo PDF through the API, verify clean LaTeX output
 - [ ] Fix any prompt issues found during testing
 - [ ] Ensure backend stays up for 30+ minutes without crashing
 - [ ] Help build slide deck
@@ -148,7 +148,7 @@
 - ✅ `POST /api/convert` — the core endpoint
 - ✅ Image preprocessing (makes recognition quality much better)
 - ✅ LaTeX post-processing (Gemini often wraps in markdown fences)
-- ✅ Error handling (don't let the demo crash on a bad image)
+- ✅ Error handling (don't let the demo crash on a bad PDF)
 - ✅ CORS config (frontend can't connect without it)
 
 ---
@@ -158,6 +158,6 @@
 - [ ] Backend running on `:8000`
 - [ ] `.env` has valid `GEMINI_API_KEY`
 - [ ] `GET /api/health` returns `200`
-- [ ] All demo images convert successfully
+- [ ] All demo PDFs convert successfully
 - [ ] No unhandled exceptions in terminal
 - [ ] Internet connection stable (Gemini API requires it)

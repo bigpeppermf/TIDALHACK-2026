@@ -518,7 +518,7 @@ export function useExport() {
     @drop.prevent="onDrop"
     @click="openFilePicker"
   >
-    <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileSelect" />
+    <input ref="fileInput" type="file" accept="application/pdf" class="hidden" @change="onFileSelect" />
     <p>📄 Drop your handwritten notes here</p>
     <p class="text-sm text-gray-400">or click to browse</p>
   </motion.div>
@@ -553,9 +553,12 @@ export function useExport() {
 ```vue
 <template>
   <div class="grid grid-cols-2 gap-4">
-    <!-- Left: original image -->
+    <!-- Left: PDF info -->
     <motion.div :initial="{ x: -50, opacity: 0 }" :animate="{ x: 0, opacity: 1 }">
-      <img :src="imageUrl" class="rounded-lg shadow" />
+      <div class="rounded-lg shadow p-4 bg-white/5">
+        <p class="text-sm text-gray-400">Selected PDF</p>
+        <p class="font-medium">{{ fileName }}</p>
+      </div>
     </motion.div>
     
     <!-- Right: LaTeX output -->
@@ -611,7 +614,7 @@ export function useExport() {
 - Build components **without** Motion first → add animations after it works
 - Use `VITE_API_URL` env var so you never hardcode `localhost:8000`
 - KaTeX is for **preview only** — the real output is the raw `.tex` string
-- Test upload with a small jpeg first before handling edge cases
+- Test upload with a small PDF first before handling edge cases
 - Tailwind makes hackathon styling 10x faster — don't write custom CSS
 - **shadcn-vue components are yours** — they live in `src/components/ui/`, edit them freely
 - Use shadcn `Button` for all buttons, `Card` for panels, `Textarea` for the LaTeX editor

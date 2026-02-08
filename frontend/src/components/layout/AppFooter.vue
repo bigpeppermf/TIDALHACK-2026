@@ -12,7 +12,7 @@ import { RouterLink } from 'vue-router'
         <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
           <span class="font-mono text-xs font-bold text-primary-foreground">m</span>
         </div>
-        <span class="text-sm font-semibold text-foreground">monograph</span>
+        <span class="text-sm font-semibold text-foreground">monogram</span>
       </div>
 
       <!-- Links -->

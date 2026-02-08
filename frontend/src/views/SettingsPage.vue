@@ -157,7 +157,7 @@ const notifications = [
         <div v-if="activeSection === 'appearance'" class="flex flex-col gap-6">
           <div>
             <h2 class="text-xl font-semibold text-foreground">Appearance</h2>
-            <p class="text-sm text-muted-foreground">Customize how monograph looks.</p>
+            <p class="text-sm text-muted-foreground">Customize how monogram looks.</p>
           </div>
           <hr class="border-border" />
           <div class="rounded-lg border border-border bg-secondary/50 p-4">

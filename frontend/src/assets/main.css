@@ -3,18 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Font: NBAkademieProMono400 ──
-   Place your .woff2 file at: public/fonts/NBAkademieProMono400.woff2
-   If you have .woff or .otf instead, update the src and format below.
-*/
-@font-face {
-  font-family: 'NBAkademieProMono400';
-  src: url('/fonts/NBAkademieProMono400.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --background: 0 0% 0%;
   --foreground: 0 0% 95%;
@@ -52,8 +40,9 @@
 }
 
 @theme inline {
-  --font-sans: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-mono: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Domine';
+  --font-mono: 'Domine';
+  --font-heading: 'Rubik Marker Hatch';
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -107,6 +96,10 @@
 
   body {
     @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 }
 

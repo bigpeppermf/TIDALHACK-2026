@@ -7,7 +7,7 @@ const heroRef = ref<HTMLElement | null>(null)
 const started = ref(false)
 
 // ── Animation phases ──
-// Phase 1: Handwritten — "monograph" appears in a handwriting style with an ink stroke effect
+// Phase 1: Handwritten — "monogram" appears in a handwriting style with an ink stroke effect
 // Phase 2: Select — a purple highlight sweeps across, "selecting" the handwritten text
 // Phase 3: Fall — text falls from the very TOP of the page, heavy spring with bounce
 // Phase 4: Glow — mouse-reactive dramatic purple shadow
@@ -125,7 +125,7 @@ onUnmounted(() => {
               text-anchor="middle"
               class="handwritten-text-svg"
             >
-              monograph
+              monogram
             </text>
           </svg>
 
@@ -168,7 +168,7 @@ onUnmounted(() => {
             class="fall-word graph-word"
             :style="glowStyle"
           >
-            graph
+            gram
           </motion.span>
         </div>
 
@@ -243,7 +243,7 @@ onUnmounted(() => {
 }
 
 .handwritten-text-svg {
-  font-family: 'Caveat', 'Dancing Script', 'Segoe Script', 'Comic Sans MS', cursive;
+  font-family: 'Rubik Marker Hatch';
   font-size: 64px;
   font-weight: 700;
   fill: none;
@@ -292,7 +292,7 @@ onUnmounted(() => {
 .fall-word {
   display: block;
   line-height: 0.86;
-  font-family: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Rubik Marker Hatch';
   color: hsl(var(--foreground));
   will-change: transform, opacity, filter, text-shadow;
   transition: text-shadow 0.12s ease-out;

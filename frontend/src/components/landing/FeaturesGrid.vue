@@ -100,7 +100,7 @@ onUnmounted(() => {
           class="mx-auto max-w-2xl text-muted-foreground"
           style="text-wrap: pretty"
         >
-          From upload to export, monograph handles the entire workflow with
+          From upload to export, monogram handles the entire workflow with
           precision and speed.
         </p>
       </div>

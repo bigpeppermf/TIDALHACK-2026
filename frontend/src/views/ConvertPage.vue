@@ -76,7 +76,7 @@ function stageIndex(s: Stage): number {
           <div class="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
             <span class="font-mono text-[10px] font-bold text-primary-foreground">m</span>
           </div>
-          <span class="text-sm font-medium text-foreground">monograph</span>
+          <span class="text-sm font-medium text-foreground">monogram</span>
         </div>
 
         <!-- Step indicator -->

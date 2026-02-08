@@ -34,7 +34,7 @@ function handleDownload() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'monograph-output.tex'
+  a.download = 'mono-gram-output.tex'
   a.click()
   URL.revokeObjectURL(url)
 }

@@ -29,7 +29,7 @@ const navLinks = [
       <RouterLink
         to="/"
         class="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 text-sm font-semibold text-foreground"
-        aria-label="monograph home"
+        aria-label="monogram home"
       >
         m
       </RouterLink>
@@ -46,14 +46,14 @@ const navLinks = [
       </nav>
 
       <span class="rotate-180 text-[10px] tracking-[0.35em] text-muted-foreground [writing-mode:vertical-rl]">
-        monograph
+        monogram
       </span>
     </aside>
 
     <div class="pointer-events-auto border-b border-border/40 bg-[hsl(var(--background)/0.82)] px-4 py-3 backdrop-blur-xl md:hidden">
       <div class="flex items-center justify-between gap-3">
         <RouterLink to="/" class="text-sm font-semibold tracking-wide text-foreground">
-          monograph
+          monogram
         </RouterLink>
         <div class="flex items-center gap-2">
           <Button as-child size="sm">

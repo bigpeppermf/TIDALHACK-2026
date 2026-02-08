@@ -1,19 +1,82 @@
 import { ref } from 'vue'
 
+export type ExportFormat = 'pdf' | 'html' | 'tex'
+
+interface ExportInput {
+  format: ExportFormat
+  texFileId?: string
+  latex?: string
+  filename?: string
+}
+
 export function useExport() {
   const exporting = ref(false)
   const error = ref<string | null>(null)
 
-  async function exportTex(latex: string, filename: string = 'notes') {
+  function extensionForFormat(format: ExportFormat): string {
+    if (format === 'pdf') return 'pdf'
+    if (format === 'html') return 'html'
+    return 'tex'
+  }
+
+  function parseContentDispositionFilename(headerValue: string | null): string | null {
+    if (!headerValue) return null
+
+    const utf8Match = headerValue.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1].trim().replace(/^"|"$/g, ''))
+      } catch {
+        return utf8Match[1].trim().replace(/^"|"$/g, '')
+      }
+    }
+
+    const basicMatch = headerValue.match(/filename\s*=\s*("?)([^";]+)\1/i)
+    if (basicMatch?.[2]) {
+      return basicMatch[2].trim()
+    }
+
+    return null
+  }
+
+  function buildFallbackFilename(filename: string | undefined, format: ExportFormat): string {
+    const base = (filename || 'notes').trim() || 'notes'
+    const safeBase = base.replace(/\.[A-Za-z0-9]+$/, '')
+    return `${safeBase}.${extensionForFormat(format)}`
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function exportFile(input: ExportInput) {
+    const { format, texFileId, latex, filename } = input
+
     exporting.value = true
     error.value = null
 
     try {
-      const res = await fetch('/api/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latex, filename }),
-      })
+      let res: Response
+
+      if (texFileId) {
+        res = await fetch(`/api/tex-files/${encodeURIComponent(texFileId)}/export?format=${encodeURIComponent(format)}`, {
+          method: 'GET',
+        })
+      } else if (format === 'tex' && latex) {
+        res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latex, filename: (filename || 'notes').trim() || 'notes' }),
+        })
+      } else {
+        error.value = 'Only LaTeX (.tex) export is available before project save.'
+        throw new Error(error.value)
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: `Server error (${res.status})` }))
@@ -21,14 +84,11 @@ export function useExport() {
         throw new Error(error.value!)
       }
 
-      // Trigger browser download from the response blob
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${filename}.tex`
-      a.click()
-      URL.revokeObjectURL(url)
+      const contentDisposition = res.headers.get('content-disposition')
+      const serverFilename = parseContentDispositionFilename(contentDisposition)
+      const downloadName = serverFilename || buildFallbackFilename(filename, format)
+      downloadBlob(blob, downloadName)
     } catch (err) {
       if (!error.value) {
         error.value = err instanceof Error ? err.message : 'Export failed'
@@ -39,5 +99,5 @@ export function useExport() {
     }
   }
 
-  return { exporting, error, exportTex }
+  return { exporting, error, exportFile }
 }

@@ -12,13 +12,14 @@ const props = defineProps<{
   latex: string
   isPdf?: boolean
   pdfFile?: File
+  texFileId?: string
 }>()
 
 const emit = defineEmits<{
   reset: []
 }>()
 
-const { exportTex } = useExport()
+const { exportFile, exporting, error: exportError } = useExport()
 
 const code = ref(props.latex)
 const copied = ref(false)
@@ -35,6 +36,17 @@ const pdfError = ref('')
 const pageRendering = ref(false)
 const pageNumPending = ref<number | null>(null)
 const renderTask = shallowRef<any>(null)
+const showDownloadOptions = ref(false)
+const selectedFormat = ref<'tex' | 'html' | 'pdf'>('tex')
+const exportNotice = ref<string | null>(null)
+
+const formatOptions = [
+  { value: 'tex' as const, label: 'LaTeX (.tex)' },
+  { value: 'html' as const, label: 'HTML (.html)' },
+  { value: 'pdf' as const, label: 'PDF (.pdf)' },
+]
+
+const canExportRemoteFormats = computed(() => Boolean(props.texFileId))
 
 function escapeHtml(value: string): string {
   return value
@@ -338,19 +350,30 @@ async function handleCopy() {
   }, 2000)
 }
 
-async function handleDownload() {
-  try {
-    await exportTex(code.value, 'monogram-output')
-  } catch {
-    // Fallback to client-side download
-    const blob = new Blob([code.value], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'monogram-output.tex'
-    a.click()
-    URL.revokeObjectURL(url)
+async function handleDownload(format: 'tex' | 'html' | 'pdf') {
+  exportNotice.value = null
+
+  if (!canExportRemoteFormats.value && format !== 'tex') {
+    exportNotice.value = 'HTML/PDF export requires a saved project.'
+    return
   }
+
+  try {
+    await exportFile({
+      format,
+      texFileId: props.texFileId,
+      latex: code.value,
+      filename: 'monogram-output',
+    })
+  } catch {
+    if (!exportNotice.value) {
+      exportNotice.value = exportError.value || 'Export failed'
+    }
+  }
+}
+
+async function handleFormatChange() {
+  await handleDownload(selectedFormat.value)
 }
 </script>
 
@@ -555,7 +578,7 @@ async function handleDownload() {
       <!-- Action bar -->
       <div class="flex items-center justify-between border-t border-border px-5 py-3 flex-shrink-0">
         <span class="text-xs text-muted-foreground">{{ code.length }} characters</span>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2">
           <button
             type="button"
             class="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary"
@@ -573,14 +596,41 @@ async function handleDownload() {
           <button
             type="button"
             class="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary"
-            @click="handleDownload"
+            @click="showDownloadOptions = !showDownloadOptions"
           >
             <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
-            Download .tex
+            Download
           </button>
+          <div v-if="showDownloadOptions" class="inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.92)] px-2 py-1">
+            <select
+              v-model="selectedFormat"
+              class="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground outline-none"
+              @change="handleFormatChange"
+            >
+              <option
+                v-for="option in formatOptions"
+                :key="option.value"
+                :value="option.value"
+                :disabled="!canExportRemoteFormats && option.value !== 'tex'"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="rounded border border-border px-2 py-1 text-xs text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+              :disabled="exporting"
+              @click="handleDownload(selectedFormat)"
+            >
+              {{ exporting ? 'Exporting...' : 'Go' }}
+            </button>
+          </div>
         </div>
+      </div>
+      <div v-if="exportNotice" class="px-5 pb-3 text-xs text-muted-foreground">
+        {{ exportNotice }}
       </div>
     </div>
 

@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import * as PDFJS from 'pdfjs-dist'
+
+PDFJS.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
 
 type EditorFileItem = {
+  path: string
   name: string
-  kind: 'tex' | 'dir' | 'bib' | 'md'
+  kind: 'tex' | 'dir' | 'bib' | 'image' | 'asset'
+  editable: boolean
   active?: boolean
 }
 
@@ -16,6 +21,9 @@ const props = defineProps<{
   projectName?: string
   sourceFilename?: string
   files?: EditorFileItem[]
+  readOnly?: boolean
+  pdfData?: Uint8Array | null
+  pdfError?: string
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error'
   saveStatusLabel?: string
   compileStatus?: 'idle' | 'dirty' | 'compiling' | 'compiled' | 'error'
@@ -27,6 +35,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   'update:activeTab': [value: 'preview' | 'source']
   'update:zoom': [value: number]
+  'select-file': [path: string]
   copy: []
   download: []
   recompile: []
@@ -37,6 +46,16 @@ const editorRef = ref<HTMLTextAreaElement | null>(null)
 const gutterRef = ref<HTMLElement | null>(null)
 const cursorLine = ref(1)
 const cursorColumn = ref(1)
+
+const pdfDoc = shallowRef<any>(null)
+const pdfCanvas = ref<HTMLCanvasElement | null>(null)
+const pdfLoading = ref(false)
+const pageRendering = ref(false)
+const pageNumPending = ref<number | null>(null)
+const renderTask = shallowRef<any>(null)
+const currentPage = ref(1)
+const totalPages = ref(0)
+const pdfViewerError = ref('')
 
 const lineCount = computed(() => Math.max(1, props.modelValue.split('\n').length))
 
@@ -50,6 +69,8 @@ const lineNumbers = computed(() => {
 })
 
 const hasRealFiles = computed(() => Array.isArray(props.files) && props.files.length > 0)
+
+const hasCompiledPdf = computed(() => Boolean(pdfDoc.value && totalPages.value > 0))
 
 const compileBadgeClass = computed(() => {
   if (props.compileStatus === 'compiled') return 'bg-emerald-500/15 text-emerald-400'
@@ -97,6 +118,148 @@ function updateCursorPosition(target?: HTMLTextAreaElement) {
   cursorLine.value = rows.length
   cursorColumn.value = (rows[rows.length - 1] ?? '').length + 1
 }
+
+async function renderPage(pageNum: number) {
+  if (!pdfDoc.value || !pdfCanvas.value || pageRendering.value) {
+    if (pageRendering.value) {
+      pageNumPending.value = pageNum
+    }
+    return
+  }
+
+  pageRendering.value = true
+
+  try {
+    const page = await pdfDoc.value.getPage(pageNum)
+    const viewport = page.getViewport({ scale: 1.15 })
+    const outputScale = window.devicePixelRatio || 1
+    const canvas = pdfCanvas.value
+    const context = canvas.getContext('2d', { alpha: false })
+
+    if (!context) {
+      throw new Error('Canvas 2D context unavailable')
+    }
+
+    canvas.width = Math.floor(viewport.width * outputScale)
+    canvas.height = Math.floor(viewport.height * outputScale)
+    canvas.style.width = `${Math.floor(viewport.width)}px`
+    canvas.style.height = `${Math.floor(viewport.height)}px`
+
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = 'white'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+
+    const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
+    renderTask.value = page.render({
+      canvasContext: context,
+      viewport,
+      transform,
+    })
+
+    await renderTask.value.promise
+    currentPage.value = pageNum
+  } finally {
+    renderTask.value = null
+    pageRendering.value = false
+
+    if (pageNumPending.value !== null) {
+      const pending = pageNumPending.value
+      pageNumPending.value = null
+      void renderPage(pending)
+    }
+  }
+}
+
+function queueRenderPage(pageNum: number) {
+  if (pageRendering.value) {
+    pageNumPending.value = pageNum
+    return
+  }
+  void renderPage(pageNum)
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    queueRenderPage(currentPage.value + 1)
+  }
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    queueRenderPage(currentPage.value - 1)
+  }
+}
+
+function resetPdfState() {
+  if (renderTask.value) {
+    try {
+      renderTask.value.cancel()
+    } catch {
+      // no-op
+    }
+    renderTask.value = null
+  }
+
+  if (pdfDoc.value && typeof pdfDoc.value.destroy === 'function') {
+    void pdfDoc.value.destroy()
+  }
+
+  pdfDoc.value = null
+  currentPage.value = 1
+  totalPages.value = 0
+  pageNumPending.value = null
+  pageRendering.value = false
+}
+
+async function loadPdfFromBytes(data: Uint8Array) {
+  pdfLoading.value = true
+  pdfViewerError.value = ''
+
+  resetPdfState()
+
+  try {
+    const loadingTask = PDFJS.getDocument({ data })
+    const loadedDoc = await loadingTask.promise
+    pdfDoc.value = loadedDoc
+    totalPages.value = loadedDoc.numPages
+    currentPage.value = 1
+
+    await nextTick()
+    queueRenderPage(1)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    pdfViewerError.value = `Unable to render compiled PDF: ${message}`
+    resetPdfState()
+  } finally {
+    pdfLoading.value = false
+  }
+}
+
+watch(
+  () => props.pdfData,
+  (nextPdfData) => {
+    if (nextPdfData && nextPdfData.length > 0) {
+      void loadPdfFromBytes(nextPdfData)
+      return
+    }
+
+    resetPdfState()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.pdfError,
+  (nextError) => {
+    if (nextError) {
+      pdfViewerError.value = nextError
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  resetPdfState()
+})
 </script>
 
 <template>
@@ -142,12 +305,13 @@ function updateCursorPosition(target?: HTMLTextAreaElement) {
         <div v-if="hasRealFiles" class="space-y-1 p-2 text-sm">
           <button
             v-for="file in props.files"
-            :key="file.name"
+            :key="file.path"
             type="button"
             :class="[
               'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left',
               file.active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/70',
             ]"
+            @click="emit('select-file', file.path)"
           >
             <span class="text-xs" :class="file.active ? 'text-primary' : 'text-muted-foreground'">{{ file.active ? '●' : '•' }}</span>
             <span class="flex-1 truncate">{{ file.name }}</span>
@@ -186,6 +350,7 @@ function updateCursorPosition(target?: HTMLTextAreaElement) {
                 {{ props.sourceFilename || 'main.tex' }}
               </span>
               <span>UTF-8</span>
+              <span v-if="props.readOnly" class="rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Read only</span>
               <span :class="saveIndicatorClass">{{ props.saveStatusLabel || 'Auto Save' }}</span>
             </div>
             <div class="flex items-center gap-2 md:hidden">
@@ -222,7 +387,9 @@ function updateCursorPosition(target?: HTMLTextAreaElement) {
                 ref="editorRef"
                 :value="modelValue"
                 class="h-full min-w-0 flex-1 resize-none bg-transparent px-4 py-4 font-mono leading-6 text-foreground outline-none"
+                :class="props.readOnly ? 'opacity-75' : ''"
                 :style="{ fontSize: `${Math.round((14 * zoom) / 100)}px` }"
+                :readonly="props.readOnly"
                 spellcheck="false"
                 @input="updateCode"
                 @scroll="handleEditorScroll"
@@ -258,15 +425,58 @@ function updateCursorPosition(target?: HTMLTextAreaElement) {
           </div>
 
           <div class="h-[calc(100%-37px)] overflow-auto p-4">
-            <div
-              class="latex-document-preview mx-auto min-h-full max-w-3xl rounded-sm border border-black/5 shadow-2xl"
-              :style="{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: 'top center',
-                width: `${100 / (zoom / 100)}%`,
-              }"
-              v-html="renderedPreview"
-            />
+            <div v-if="pdfLoading" class="mx-auto flex min-h-[12rem] max-w-3xl items-center justify-center rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
+              Rendering PDF...
+            </div>
+
+            <div v-else-if="hasCompiledPdf" class="mx-auto max-w-3xl space-y-3">
+              <div class="flex items-center justify-between rounded-sm border border-border bg-[hsl(var(--card)/0.9)] px-3 py-2 text-xs text-muted-foreground">
+                <button type="button" class="rounded border border-border px-2 py-1 text-foreground disabled:opacity-50" :disabled="currentPage <= 1" @click="prevPage">
+                  Prev
+                </button>
+                <span>Page {{ currentPage }} / {{ totalPages }}</span>
+                <button
+                  type="button"
+                  class="rounded border border-border px-2 py-1 text-foreground disabled:opacity-50"
+                  :disabled="currentPage >= totalPages"
+                  @click="nextPage"
+                >
+                  Next
+                </button>
+              </div>
+
+              <div class="overflow-auto rounded-sm border border-black/5 bg-white p-3 shadow-2xl">
+                <div
+                  class="mx-auto"
+                  :style="{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'top center',
+                    width: `${100 / (zoom / 100)}%`,
+                  }"
+                >
+                  <canvas ref="pdfCanvas" class="mx-auto block" />
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-if="pdfViewerError"
+                class="mx-auto max-w-3xl rounded-sm border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              >
+                {{ pdfViewerError }}
+              </div>
+
+              <div
+                class="latex-document-preview mx-auto min-h-full max-w-3xl rounded-sm border border-black/5 shadow-2xl"
+                :style="{
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: 'top center',
+                  width: `${100 / (zoom / 100)}%`,
+                }"
+                v-html="renderedPreview"
+              />
+            </div>
           </div>
         </section>
       </div>

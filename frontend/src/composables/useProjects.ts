@@ -18,6 +18,32 @@ interface TexDetail {
   updated_at: string
 }
 
+export interface ProjectFileMeta {
+  path: string
+  kind: 'tex' | 'bib' | 'image' | 'dir' | 'asset'
+  editable: boolean
+  stored: boolean
+}
+
+interface ProjectFilesResponse {
+  project_id: string
+  files: Array<{
+    path: string
+    kind: string
+    editable?: boolean
+    stored?: boolean
+  }>
+}
+
+interface CompileResponse {
+  success: boolean
+  error?: string
+  detail?: string
+  project_id?: string
+  filename?: string
+  pdf_base64?: string
+}
+
 let remoteLoadPromise: Promise<void> | null = null
 const projectsState = ref<ProjectRecord[]>(loadProjects())
 
@@ -113,6 +139,22 @@ function upsertProject(project: ProjectRecord) {
     projectsState.value = [...projectsState.value]
   }
   persistProjects()
+}
+
+function decodeBase64ToBytes(encoded: string): Uint8Array {
+  const binary = window.atob(encoded)
+  const output = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    output[i] = binary.charCodeAt(i)
+  }
+  return output
+}
+
+function normalizeProjectFileKind(kind: string): ProjectFileMeta['kind'] {
+  if (kind === 'tex' || kind === 'bib' || kind === 'image' || kind === 'dir') {
+    return kind
+  }
+  return 'asset'
 }
 
 export function useProjects(ownerId?: string | null) {
@@ -255,10 +297,59 @@ export function useProjects(ownerId?: string | null) {
     }
   }
 
+  async function fetchProjectFiles(id: string): Promise<ProjectFileMeta[] | null> {
+    if (id.startsWith('local-')) {
+      return null
+    }
+
+    const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}/files`)
+    if (response.status === 404) {
+      return null
+    }
+    if (!response.ok) {
+      throw new Error('Failed to fetch project files')
+    }
+
+    const payload = (await response.json()) as ProjectFilesResponse
+    if (!Array.isArray(payload.files)) {
+      return null
+    }
+
+    return payload.files.map((file) => ({
+      path: file.path,
+      kind: normalizeProjectFileKind(file.kind),
+      editable: Boolean(file.editable),
+      stored: Boolean(file.stored),
+    }))
+  }
+
+  async function compileProjectPdf(id: string): Promise<{ ok: true; pdfData: Uint8Array } | { ok: false; error: string }> {
+    if (id.startsWith('local-')) {
+      return { ok: false, error: 'Remote project required for PDF compile.' }
+    }
+
+    const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}/compile`, {
+      method: 'POST',
+    })
+    const payload = (await response.json()) as CompileResponse
+
+    if (!response.ok || !payload.success || !payload.pdf_base64) {
+      const message = payload.detail || payload.error || 'Compile failed'
+      return { ok: false, error: message }
+    }
+
+    return {
+      ok: true,
+      pdfData: decodeBase64ToBytes(payload.pdf_base64),
+    }
+  }
+
   return {
     projects,
     addConvertedProject,
+    compileProjectPdf,
     ensureRemoteProjectsLoaded,
+    fetchProjectFiles,
     fetchProjectById,
     fetchRecentProjects,
     getProjectById,

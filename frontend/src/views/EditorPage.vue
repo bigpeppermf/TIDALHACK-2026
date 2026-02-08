@@ -4,7 +4,7 @@ import katex from 'katex'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import LatexEditorPanel from '@/components/convert/LatexEditorPanel.vue'
-import { useProjects } from '@/composables/useProjects'
+import { useProjects, type ProjectFileMeta } from '@/composables/useProjects'
 
 const DEFAULT_LATEX = `\\documentclass{article}
 \\usepackage{amsmath}
@@ -24,8 +24,10 @@ type CompileState = 'idle' | 'dirty' | 'compiling' | 'compiled' | 'error'
 type ShareState = 'idle' | 'shared' | 'error'
 
 type EditorFileItem = {
+  path: string
   name: string
-  kind: 'tex' | 'dir' | 'bib' | 'md'
+  kind: 'tex' | 'dir' | 'bib' | 'image' | 'asset'
+  editable: boolean
   active?: boolean
 }
 
@@ -33,7 +35,9 @@ const route = useRoute()
 const router = useRouter()
 const ownerId = typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id')
 const {
+  compileProjectPdf,
   ensureRemoteProjectsLoaded,
+  fetchProjectFiles,
   fetchProjectById,
   getProjectById,
   projects,
@@ -48,9 +52,13 @@ const copied = ref(false)
 const currentProjectId = ref<string | null>(null)
 const currentProjectName = ref('tidalhack-paper')
 const currentSourceFilename = ref<string | null>(null)
+const activeFilePath = ref<string | null>(null)
+const projectFilesMetadata = ref<ProjectFileMeta[] | null>(null)
 const saveState = ref<SaveState>('idle')
 const compileState = ref<CompileState>('compiled')
+const compileErrorMessage = ref('')
 const shareState = ref<ShareState>('idle')
+const compiledPdfData = ref<Uint8Array | null>(null)
 
 const isHydrating = ref(false)
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -194,9 +202,52 @@ const routeProjectId = computed(() => {
 })
 
 const editorFiles = computed<EditorFileItem[]>(() => {
-  const filename = (currentSourceFilename.value || '').trim()
-  if (!filename) return []
-  return [{ name: filename, kind: 'tex', active: true }]
+  if (!projectFilesMetadata.value || projectFilesMetadata.value.length === 0) {
+    return []
+  }
+
+  return projectFilesMetadata.value.map((file) => ({
+    path: file.path,
+    name: file.path.split('/').pop() || file.path,
+    kind: file.kind,
+    editable: file.editable,
+    active: activeFilePath.value === file.path,
+  }))
+})
+
+const activeFile = computed<EditorFileItem | null>(() => {
+  if (!activeFilePath.value) return null
+  return editorFiles.value.find((file) => file.path === activeFilePath.value) ?? null
+})
+
+const isActiveFileEditable = computed(() => {
+  if (!projectFilesMetadata.value || projectFilesMetadata.value.length === 0) {
+    return true
+  }
+  return Boolean(activeFile.value?.editable && activeFile.value?.kind === 'tex')
+})
+
+const activeSourceFilename = computed(() => {
+  if (activeFile.value?.path) {
+    return activeFile.value.path
+  }
+  return currentSourceFilename.value || undefined
+})
+
+const visibleCode = computed(() => {
+  if (isActiveFileEditable.value) {
+    return code.value
+  }
+
+  if (activeFile.value) {
+    return [
+      `% ${activeFile.value.path}`,
+      `% This file is referenced by the project graph.`,
+      `% Editing is currently supported for stored .tex source only.`,
+    ].join('\n')
+  }
+
+  return code.value
 })
 
 const saveStatusLabel = computed(() => {
@@ -221,15 +272,64 @@ const shareLabel = computed(() => {
 })
 
 async function compilePreview() {
-  compileState.value = 'compiling'
+  if (!currentProjectId.value) {
+    compileState.value = 'error'
+    compileErrorMessage.value = 'No active project selected.'
+    compiledPdfData.value = null
+    return
+  }
 
-  try {
-    await Promise.resolve()
+  compileState.value = 'compiling'
+  compileErrorMessage.value = ''
+
+  const result = await compileProjectPdf(currentProjectId.value)
+  if (result.ok) {
+    compiledPdfData.value = result.pdfData
     compiledCode.value = code.value
     compileState.value = 'compiled'
-  } catch (error) {
-    compileState.value = 'error'
+    return
   }
+
+  compiledPdfData.value = null
+  compileState.value = 'error'
+  compileErrorMessage.value = result.error
+}
+
+function pickInitialActiveFile(files: ProjectFileMeta[] | null): string | null {
+  if (!files || files.length === 0) {
+    return null
+  }
+  const editableTex = files.find((file) => file.kind === 'tex' && file.editable)
+  if (editableTex) return editableTex.path
+  return files[0]?.path ?? null
+}
+
+async function hydrateProjectFiles(projectId: string | null) {
+  if (!projectId) {
+    projectFilesMetadata.value = null
+    activeFilePath.value = null
+    return
+  }
+
+  try {
+    const files = await fetchProjectFiles(projectId)
+    projectFilesMetadata.value = files
+    activeFilePath.value = pickInitialActiveFile(files)
+  } catch {
+    projectFilesMetadata.value = null
+    activeFilePath.value = null
+  }
+}
+
+function handleSelectFile(path: string) {
+  activeFilePath.value = path
+}
+
+function handleUpdateEditorValue(nextValue: string) {
+  if (!isActiveFileEditable.value) {
+    return
+  }
+  code.value = nextValue
 }
 
 async function hydrateFromProject(projectId: string | null) {
@@ -244,9 +344,13 @@ async function hydrateFromProject(projectId: string | null) {
     currentProjectId.value = null
     currentProjectName.value = 'tidalhack-paper'
     currentSourceFilename.value = null
+    activeFilePath.value = null
+    projectFilesMetadata.value = null
     code.value = DEFAULT_LATEX
     compiledCode.value = DEFAULT_LATEX
-    compileState.value = 'compiled'
+    compileState.value = 'idle'
+    compileErrorMessage.value = ''
+    compiledPdfData.value = null
     saveState.value = 'idle'
     isHydrating.value = false
     return
@@ -255,11 +359,15 @@ async function hydrateFromProject(projectId: string | null) {
   currentProjectId.value = project.id
   currentProjectName.value = project.name
   currentSourceFilename.value = project.sourceFilename ?? null
+  compileErrorMessage.value = ''
   code.value = project.latex || DEFAULT_LATEX
   compiledCode.value = code.value
-  compileState.value = 'compiled'
+  compileState.value = 'dirty'
   saveState.value = 'idle'
+  compiledPdfData.value = null
+  await hydrateProjectFiles(project.id)
   isHydrating.value = false
+  await compilePreview()
 
   if (!routeProjectId.value && project.id) {
     void router.replace({
@@ -324,7 +432,7 @@ watch(
 )
 
 watch(code, (nextCode) => {
-  if (!isHydrating.value) {
+  if (!isHydrating.value && isActiveFileEditable.value) {
     compileState.value = 'dirty'
   }
   scheduleSave(nextCode)
@@ -332,11 +440,10 @@ watch(code, (nextCode) => {
 
 onMounted(() => {
   void ensureRemoteProjectsLoaded()
-  void compilePreview()
 })
 
 async function handleCopy() {
-  await navigator.clipboard.writeText(code.value)
+  await navigator.clipboard.writeText(visibleCode.value)
   copied.value = true
   setTimeout(() => {
     copied.value = false
@@ -344,7 +451,7 @@ async function handleCopy() {
 }
 
 function handleDownload() {
-  const blob = new Blob([code.value], { type: 'text/plain' })
+  const blob = new Blob([visibleCode.value], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -405,22 +512,26 @@ onUnmounted(() => {
     <section class="h-screen px-3 pb-3 pt-20 md:px-5">
       <div class="mx-auto h-full max-w-[1500px] overflow-hidden rounded-2xl border border-border bg-card">
         <LatexEditorPanel
-          :model-value="code"
+          :model-value="visibleCode"
           :active-tab="activeTab"
           :copied="copied"
           :rendered-preview="renderedPreview"
+          :pdf-data="compiledPdfData"
+          :pdf-error="compileErrorMessage"
           :zoom="zoom"
           :project-name="currentProjectName"
-          :source-filename="currentSourceFilename || undefined"
+          :source-filename="activeSourceFilename"
           :files="editorFiles"
+          :read-only="!isActiveFileEditable"
           :save-status="saveState"
           :save-status-label="saveStatusLabel"
           :compile-status="compileState"
           :compile-status-label="compileStatusLabel"
           :share-label="shareLabel"
-          @update:model-value="code = $event"
+          @update:model-value="handleUpdateEditorValue"
           @update:active-tab="activeTab = $event"
           @update:zoom="zoom = $event"
+          @select-file="handleSelectFile"
           @copy="handleCopy"
           @download="handleDownload"
           @recompile="compilePreview"

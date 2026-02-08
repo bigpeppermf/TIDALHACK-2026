@@ -50,8 +50,13 @@ sys.modules["app.db.base"] = base_module
 def _placeholder_get_db():
     raise RuntimeError("get_db dependency should be overridden in tests")
 
+
+class _PlaceholderUser:
+    id = "mock-user-id"
+
+
 def _placeholder_get_current_user():
-    raise RuntimeError("get_current_user dependency should be overridden in tests")
+    return _PlaceholderUser()
 
 
 deps_module = types.ModuleType("app.deps")

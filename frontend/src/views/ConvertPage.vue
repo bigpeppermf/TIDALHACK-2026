@@ -180,6 +180,7 @@ onUnmounted(() => {
         :is-pdf="isPdf"
         :pdf-file="uploadedFile ?? undefined"
         :latex="latexOutput"
+        :tex-file-id="latestProjectId ?? undefined"
         @reset="handleReset"
       />
     </div>

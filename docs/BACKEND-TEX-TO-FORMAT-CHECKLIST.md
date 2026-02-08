@@ -48,12 +48,15 @@ The output format is determined by a backend query parameter.
 
 ---
 
-## Phase 5 — HTML Generation
+## Phase 5 — HTML Generation (Accessible, MathML-first)
 - [ ] Create a unique temp directory per request
 - [ ] Write LaTeX source to `input.tex` within the temp directory
 - [ ] Execute `pandoc` via a subprocess argument list (no shell) to produce `output.html`
+- [ ] Use `-f latex -t html --mathml -s` to emit semantic HTML + MathML
 - [ ] Verify `output.html` exists and is non-empty
 - [ ] Return HTML bytes with `Content-Type: text/html` and download headers
+- [ ] Confirm MathML is present and no image-based equations are emitted
+- [ ] Verify screen-reader compatibility (VoiceOver/NVDA/JAWS) on sample output
 - [ ] Cleanup the temp directory in a `finally`/defer block
 
 ---

@@ -6,7 +6,7 @@
 |------|------------|--------|
 | TEX  | Raw LaTeX source | None |
 | PDF  | Compiled document | pdflatex |
-| HTML | Web-renderable output | pandoc |
+| HTML | Web-renderable output (semantic HTML + MathML) | pandoc |
 
 ---
 
@@ -19,11 +19,14 @@
   - `-halt-on-error`
 - Expected output file: `input.pdf`
 
-### HTML
+### HTML (Accessible, MathML-first)
 - `pandoc`
   - Input: `input.tex`
   - Output: `output.html`
-  - Use explicit format args (e.g., `-f latex -t html`)
+  - Use explicit format args: `-f latex -t html --mathml -s`
+  - Math is represented using native MathML (no images)
+  - Output is WCAG 2.1 AA aligned and usable without JavaScript
+  - Screen readers: VoiceOver / NVDA / JAWS
 - Expected output file: `output.html`
 
 ---
@@ -59,6 +62,9 @@ Content-Disposition: attachment; filename="document.pdf"
 Content-Type: text/html
 Content-Disposition: attachment; filename="document.html"
 ```
+Notes:
+- Output includes semantic HTML structure and embedded MathML.
+- Math is accessible to VoiceOver/NVDA/JAWS (MathML support).
 
 ### TEX
 ```

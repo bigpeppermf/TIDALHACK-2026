@@ -29,6 +29,7 @@ We have **3 levels** of testing. For a 24-hour hackathon, focus on **Level 1 fir
 | B4 | Convert — whiteboard photo | Same curl with whiteboard photo | LaTeX output (may be lower quality, that's ok) |
 | B5 | Export endpoint | `curl -X POST http://localhost:8000/api/export -H "Content-Type: application/json" -d '{"latex": "\\documentclass{article}", "filename": "test"}'` | File download response |
 | B6 | LaTeX compiles | Copy output LaTeX → paste in Overleaf or `pdflatex` | Compiles without errors |
+| B7 | HTML export accessibility | Export HTML → inspect for `<math>` tags and absence of `<img>` | MathML present, readable with screen readers |
 
 ### 🎨 Frontend Smoke Tests
 

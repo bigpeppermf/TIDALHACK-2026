@@ -12,6 +12,7 @@ load_dotenv(_env_path)
 
 from app.routes.convert import router as convert_router
 from app.routes.export import router as export_router
+from app.routes.tex_export import router as tex_export_router
 from app.routes import tex
 
 app = FastAPI()
@@ -36,6 +37,7 @@ app.add_middleware(
 app.include_router(convert_router, prefix="/api")
 app.include_router(export_router, prefix="/api")
 app.include_router(tex.router)  # tex routes already include /api
+app.include_router(tex_export_router, prefix="/api")
 
 
 # ERROR HANDLERS

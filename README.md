@@ -28,6 +28,7 @@ Backend (Python)
 Frontend (Node)
 - Vite + Vue 3
 - KaTeX for LaTeX preview
+- Accessible LaTeX → HTML export using semantic HTML + MathML (WCAG 2.1 AA aligned; usable with VoiceOver/NVDA/JAWS; no images for equations)
 - shadcn/ui components (or equivalent)
 
 Shared contract

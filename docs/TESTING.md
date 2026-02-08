@@ -1,4 +1,4 @@
-# 🧪 ScribeTeX — Test Cases
+# 🧪 monogram — Test Cases
 
 > **How to verify everything works before demo day**
 > Last updated: Feb 7, 2026

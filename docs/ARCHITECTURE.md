@@ -1,4 +1,4 @@
-# 🏗️ ScribeTeX — Architecture & API Contract
+# 🏗️ monogram — Architecture & API Contract
 
 > **Shared reference for both teammates — system design, API shape, env vars**
 > Last updated: Feb 7, 2026
@@ -10,7 +10,7 @@
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    FRONTEND                         │
-│       Vue 3  ·  Motion (motion-v)  ·  KaTeX         │
+│       Vue 3  ·  Motion (motion-v)  ·  shadcn-vue  ·  KaTeX │
 │                                                     │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐ │
 │  │  Upload   │  │  LaTeX   │  │   Live Preview    │ │

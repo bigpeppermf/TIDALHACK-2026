@@ -31,6 +31,108 @@ npm run dev   # → http://localhost:5173
 
 ---
 
+## Theme & Color System
+
+### Color Palette
+
+| Token | HSL | Hex (approx.) | Usage |
+|---|---|---|---|
+| `--primary` | `270 60% 55%` | `#7C4DBC` | Buttons, accents, glow, selection |
+| `--background` | `0 0% 0%` | `#000000` | Page background (pure black) |
+| `--foreground` | `0 0% 95%` | `#F2F2F2` | Main text |
+| `--primary-foreground` | `0 0% 100%` | `#FFFFFF` | Text on primary buttons |
+| `--muted-foreground` | `270 5% 55%` | — | Secondary/label text |
+| `--border` | `270 4% 16%` | — | Subtle borders |
+
+### Font Stack
+
+All fonts loaded via Google Fonts in `index.html`:
+
+| Font | Usage | CSS Variable |
+|---|---|---|
+| **Rubik Marker Hatch** | Headings (h1–h6), hero "mono"/"graph" fall text | `--font-heading` |
+| **Domine** | Body text, paragraphs, UI elements | `--font-sans` |
+| **Caveat** | Hero handwriting SVG animation (phase 1) | — (inline in component) |
+| **JetBrains Mono** | Code/monospace fallback | `--font-mono` |
+
+```css
+/* All set in @theme inline block */
+--font-sans: 'Domine', Georgia, 'Times New Roman', serif;
+--font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+--font-heading: 'Rubik Marker Hatch', cursive;
+
+/* Applied globally in @layer base */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+```
+
+---
+
+## Hero Animation — "monogram" 4-Phase Sequence
+
+The landing page hero uses a multi-phase animation built with Motion-v and raw CSS:
+
+```
+Phase 1 — Handwriting:  SVG text drawn with stroke-dasharray animation (cursive Caveat font)
+Phase 2 — Selection:    Purple highlight sweeps across the handwritten text
+Phase 3 — Fall:         Text falls from top of viewport as two words "mono" + "graph"
+                        using Motion spring physics (stiffness: 80, damping: 12, mass: 1.2)
+                        with rotation, blur, and scale applied during fall
+Phase 4 — Glow:         Mouse-tracking 6-layer text-shadow in primary purple, reactive to cursor
+```
+
+### Key Motion Props (Fall Phase)
+
+```vue
+<motion.span
+  :initial="{ opacity: 0, y: '-60vh', scale: 0.7, filter: 'blur(12px)', rotate: -8 }"
+  :animate="{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotate: 0 }"
+  :transition="{
+    type: 'spring',
+    stiffness: 80,
+    damping: 12,
+    mass: 1.2,
+    velocity: 2,
+  }"
+/>
+```
+
+### Mouse Glow (Phase 4)
+
+```typescript
+const glowStyle = computed(() => {
+  const dx = (mouseX.value - 0.5) * 80
+  const dy = (mouseY.value - 0.5) * 80
+  return {
+    textShadow: [
+      `${dx * 0.2}px ${dy * 0.2}px 6px hsl(var(--primary) / 0.6)`,
+      `${dx * 0.4}px ${dy * 0.4}px 16px hsl(var(--primary) / 0.45)`,
+      `${dx * 0.7}px ${dy * 0.7}px 32px hsl(var(--primary) / 0.3)`,
+      `${dx}px ${dy}px 55px hsl(var(--primary) / 0.2)`,
+      `${dx * 1.3}px ${dy * 1.3}px 80px hsl(var(--primary) / 0.12)`,
+      `${dx * 1.6}px ${dy * 1.6}px 120px hsl(var(--primary) / 0.06)`,
+    ].join(', '),
+  }
+})
+```
+
+### SVG Handwriting Effect (Phase 1)
+
+```css
+.handwritten-text-svg {
+  font-family: 'Caveat', cursive;
+  fill: none;
+  stroke: hsl(var(--foreground));
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+  animation: stroke-write 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+             stroke-fill 0.4s ease-in 1.2s forwards;
+}
+```
+
+---
+
 ## Vue Router Setup
 
 ```typescript
@@ -80,8 +182,8 @@ import { motion } from 'motion-v'
 
 ```vue
 <motion.button
-  :whileHover="{ scale: 1.05 }"
-  :whilePress="{ scale: 0.95 }"
+  :hover="{ scale: 1.05 }"
+  :tap="{ scale: 0.95 }"
   @hoverStart="() => console.log('hover!')"
 >
   Click me
@@ -152,10 +254,10 @@ onMounted(() => {
 | Element | Animation | Key Props |
 |---|---|---|
 | Upload zone mount | Fade up | `initial={{ opacity: 0, y: 20 }}` → `animate={{ opacity: 1, y: 0 }}` |
-| Upload zone hover | Subtle scale | `whileHover={{ scale: 1.02 }}` |
+| Upload zone hover | Subtle scale | `hover={{ scale: 1.02 }}` |
 | Loading spinner | Rotate forever | `animate={{ rotate: 360 }}` + `repeat: Infinity` |
 | Result panels | Slide in | `initial={{ x: -100 }}` → `animate={{ x: 0 }}` |
-| Buttons | Press feedback | `whilePress={{ scale: 0.95 }}` |
+| Buttons | Press feedback | `tap={{ scale: 0.95 }}` |
 | Toast notification | Slide down + fade | `initial={{ y: -50, opacity: 0 }}` |
 | Page transition | Fade cross | `initial={{ opacity: 0 }}` on route enter |
 
@@ -409,7 +511,7 @@ export function useExport() {
   <motion.div
     :initial="{ opacity: 0, y: 20 }"
     :animate="{ opacity: 1, y: 0 }"
-    :whileHover="{ scale: 1.02 }"
+    :hover="{ scale: 1.02 }"
     class="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer"
     @dragover.prevent="isDragging = true"
     @dragleave="isDragging = false"

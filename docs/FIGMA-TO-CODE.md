@@ -1,4 +1,4 @@
-# 🎨 → 💻 ScribeTeX Figma-to-Code Workflow
+# 🎨 → 💻 monogram Figma-to-Code Workflow
 
 > **Teammate 1 (Frontend) — how to turn Figma designs into Vue components fast**
 > Philosophy: **Speed > Perfection**. Ship the demo, not production code.
@@ -40,29 +40,28 @@ Only the **3 screens you'll demo**:
 Use Figma's **Inspect** panel to grab values. Paste them into your Tailwind CSS config:
 
 ```css
-/* frontend/src/style.css — Tailwind v4 theme */
+/* frontend/src/assets/main.css — Tailwind v4 theme (actual project values) */
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --color-primary: #3B82F6;
-  --color-primary-hover: #2563EB;
-  --color-secondary: #8B5CF6;
-  --color-surface: #1E1E2E;
-  --color-surface-light: #2A2A3E;
-  --color-text: #E2E8F0;
-  --color-text-muted: #94A3B8;
-  --color-success: #22C55E;
-  --color-error: #EF4444;
+:root {
+  --background: 0 0% 0%;          /* Pure black */
+  --foreground: 0 0% 95%;          /* Near-white */
+  --primary: 270 60% 55%;          /* Darker purple (#7C4DBC) */
+  --primary-foreground: 0 0% 100%; /* White on purple */
+  /* ... see main.css for full variable list */
+}
 
-  --font-display: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+@theme inline {
+  --font-sans: 'Domine', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-heading: 'Rubik Marker Hatch', cursive;
+  /* ... color mappings from CSS vars */
 }
 ```
 
-> **Tailwind v4**: No `tailwind.config.js` needed. Use `@theme` in your CSS file directly with the `@tailwindcss/vite` plugin.
+> **Tailwind v4**: No `tailwind.config.js` needed. Uses `@theme inline` in CSS with the `@tailwindcss/vite` plugin.
+> **Fonts**: All loaded via Google Fonts in `index.html` — Rubik Marker Hatch (headings), Domine (body), Caveat (hero handwriting animation).
 
 ### Export from Figma
 
@@ -110,10 +109,11 @@ export default defineConfig({
 ### Import Tailwind in Your CSS
 
 ```css
-/* frontend/src/style.css */
+/* frontend/src/assets/main.css */
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
+@theme inline {
   /* paste your Figma tokens here */
 }
 ```
@@ -137,7 +137,7 @@ Combine **4 techniques** depending on the component:
 | **shadcn-vue Components** | Buttons, cards, inputs, toasts, dialogs | 🏆 Pre-styled + accessible |
 | **AI Generation** | Landing page hero, navbars, unique layouts | ⚡ Fastest for custom UI |
 | **Hand-build + Tailwind** | Upload zone, result split view | 🔨 Most control |
-| **Component Skeleton + Style** | Take existing skeletons from `FRONTEND-REFERENCE.md`, style to match Figma | 🎯 Best for ScribeTeX |
+| **Component Skeleton + Style** | Take existing skeletons from `FRONTEND-REFERENCE.md`, style to match Figma | 🎯 Best for monogram |
 
 ---
 
@@ -154,9 +154,9 @@ Combine **4 techniques** depending on the component:
    ```
 3. Paste the output into your `.vue` file
 4. Replace hardcoded colors with your `@theme` tokens: `bg-primary`, `text-text-muted`, etc.
-5. Swap placeholder text with real ScribeTeX copy
+5. Swap placeholder text with real monogram copy
 
-**AI-friendly components for ScribeTeX:**
+**AI-friendly components for monogram:**
 - Hero section with headline + CTA
 - Navbar with logo and links
 - Footer (if time)
@@ -169,9 +169,9 @@ Combine **4 techniques** depending on the component:
 
 shadcn-vue gives you polished, accessible components that are **copied into your project** (not a node_modules dependency). Edit them freely.
 
-#### Which shadcn Components to Use for ScribeTeX
+#### Which shadcn Components to Use for monogram
 
-| ScribeTeX Feature | shadcn Component | Why |
+| monogram Feature | shadcn Component | Why |
 |---|---|---|
 | "Convert" / "Copy" / "Download" buttons | `Button` | 6 variants, consistent styling |
 | Result panel wrapper | `Card` + `CardHeader` + `CardContent` + `CardFooter` | Structured layout with title/description |
@@ -219,7 +219,7 @@ function onCopy() {
 Wrap Motion around shadcn components for animations:
 
 ```vue
-<motion.div :whileHover="{ scale: 1.02 }" :whilePress="{ scale: 0.98 }">
+<motion.div :hover="{ scale: 1.02 }" :tap="{ scale: 0.98 }">
   <Button size="lg">Convert to LaTeX</Button>
 </motion.div>
 ```
@@ -302,16 +302,21 @@ The [FRONTEND-REFERENCE.md](FRONTEND-REFERENCE.md) already has skeletons for eve
 
 Build → Style → Animate. Never the reverse.
 
-### The ScribeTeX Animation Sequence
+### The monogram Animation Sequence
 
 This is the narrative your demo tells through motion:
 
 ```
 User lands on page
-  └─ Hero fades in (opacity 0→1, y 20→0)
-      └─ CTA button pulses subtly
+  └─ Hero animation starts (IntersectionObserver, threshold 0.3):
+      Phase 1 — Handwriting: SVG "monogram" drawn with stroke animation
+      Phase 2 — Selection: purple highlight sweeps across the handwritten text
+      Phase 3 — Fall: "mono" + "graph" fall from -60vh with spring physics
+                      (stiffness: 80, damping: 12, mass: 1.2, rotate, blur, scale)
+      Phase 4 — Glow: 6-layer mouse-tracking text-shadow in primary purple
+      └─ CTA button + stats fade in after fall
 
-User clicks "Try it" → /convert
+User clicks "Start Converting" → /convert
   └─ Page cross-fades (route transition)
       └─ Upload zone fades up
 
@@ -332,25 +337,25 @@ Results arrive
           └─ LaTeX renders with KaTeX
 
 User interacts with result
-  └─ Copy button: whilePress scale 0.95 → toast slides down
-  └─ Download button: whilePress scale 0.95
+  └─ Copy button: tap scale 0.95 → toast slides down
+  └─ Download button: tap scale 0.95
 ```
 
 ### Implementation — Staggered Children
 
-Use Motion's `variants` + `stagger` for the result view:
+Use Motion `variants` with `staggerChildren` for the result view:
 
 ```vue
 <script setup>
 import { motion } from 'motion-v'
-import { stagger } from 'motion-v'
 
 const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      delayChildren: stagger(0.15)
+      delayChildren: 0.15,
+      staggerChildren: 0.15,
     }
   }
 }
@@ -406,8 +411,8 @@ Use springs instead of easing for organic feel:
 ```vue
 <!-- Snappy button press -->
 <motion.button
-  :whileHover="{ scale: 1.05 }"
-  :whilePress="{ scale: 0.92 }"
+  :hover="{ scale: 1.05 }"
+  :tap="{ scale: 0.92 }"
   :transition="{
     type: 'spring',
     stiffness: 400,
@@ -462,7 +467,7 @@ Run through this once your flow works end-to-end:
 - [ ] **Spacing is even** — check padding/margins, use Tailwind's spacing scale
 - [ ] **No layout jumps** — content doesn't shift when loading/results appear
 - [ ] **Loading state feels smooth** — no blank white screen between states
-- [ ] **Buttons have hover/press feedback** — Motion `whileHover` / `whilePress`
+- [ ] **Buttons have hover/press feedback** — Motion `hover` / `tap`
 - [ ] **Error messages are friendly** — no raw error strings from the API
 - [ ] **Console is clean** — no red errors in DevTools
 
@@ -494,7 +499,7 @@ import { Button } from '@/components/ui/button'
 </script>
 
 <template>
-  <motion.div :whileHover="{ scale: 1.03 }" :whilePress="{ scale: 0.97 }">
+  <motion.div :hover="{ scale: 1.03 }" :tap="{ scale: 0.97 }">
     <Button>Convert to LaTeX</Button>
   </motion.div>
 </template>
@@ -503,8 +508,8 @@ import { Button } from '@/components/ui/button'
 ```vue
 <!-- Option B: Hand-built with Tailwind (if you need full control) -->
 <motion.button
-  :whileHover="{ scale: 1.03 }"
-  :whilePress="{ scale: 0.97 }"
+  :hover="{ scale: 1.03 }"
+  :tap="{ scale: 0.97 }"
   class="bg-primary hover:bg-primary-hover text-white font-semibold
          px-4 py-2 rounded-lg transition-colors"
 >

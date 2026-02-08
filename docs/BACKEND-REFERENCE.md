@@ -35,7 +35,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="ScribeTeX API")
+app = FastAPI(title="monogram API")
 
 app.add_middleware(
     CORSMiddleware,

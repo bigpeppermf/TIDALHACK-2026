@@ -72,18 +72,21 @@
 ### Motion Animations
 
 - [ ] Upload zone: fade-in on mount (`initial={{ opacity: 0, y: 20 }}`)
-- [ ] Upload zone: subtle scale on hover (`whileHover={{ scale: 1.02 }}`)
+- [ ] Upload zone: subtle scale on hover (`hover={{ scale: 1.02 }}`)
 - [ ] Loading: rotating pen/pencil icon (`animate={{ rotate: 360 }}, repeat: Infinity`)
 - [ ] Loading: staged status text ("Reading..." → "Converting..." → "Almost done...")
 - [ ] Result panels: slide in from sides (`initial={{ x: -100 }}`)
-- [ ] Buttons: press feedback (`whilePress={{ scale: 0.95 }}`)
+- [ ] Buttons: press feedback (`tap={{ scale: 0.95 }}`)
 - [ ] Success toast: slide-down "Copied!" notification
 - [ ] Page transitions: fade on route change
 
 ### Landing Page
 
-- [ ] Hero section: headline, subtext, call-to-action button
-- [ ] Navbar: "ScribeTeX" logo/name + nav links
+- [x] Hero section: 4-phase animation (handwriting → selection → spring fall → mouse glow)
+- [x] Hero section: "monogram" title split into "mono" + "gram" with dramatic purple shadow
+- [x] Color theme: pure black background, darker purple primary (`270 60% 55%`)
+- [x] Font setup: Rubik Marker Hatch (headings) + Domine (body) + Caveat (handwriting) via Google Fonts
+- [ ] Navbar: "monogram" logo/name + nav links
 - [ ] Visual polish: consistent spacing, typography, colors
 
 ### Error States

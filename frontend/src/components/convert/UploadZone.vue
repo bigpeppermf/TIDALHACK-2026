@@ -5,8 +5,8 @@ const emit = defineEmits<{
   fileAccepted: [file: File]
 }>()
 
-const ACCEPTED_MIME_TYPES = ['application/pdf', 'text/html', 'application/xhtml+xml', 'text/x-tex', 'application/x-tex']
-const ACCEPTED_EXTENSIONS = ['.pdf', '.html', '.tex', '.latex']
+const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
 const MAX_SIZE = 10 * 1024 * 1024
 
 const dragOver = ref(false)
@@ -20,7 +20,7 @@ function validate(file: File): string | null {
   const hasAcceptedExtension = ACCEPTED_EXTENSIONS.some((ext) => fileName.endsWith(ext))
 
   if (!hasAcceptedMimeType && !hasAcceptedExtension) {
-    return 'Only PDF, HTML, and LaTeX documents are supported.'
+    return 'Only JPEG, PNG, WebP images and PDF documents are supported.'
   }
   if (file.size > MAX_SIZE) {
     return 'File must be under 10MB.'
@@ -37,11 +37,15 @@ function handleFile(file: File) {
     return
   }
 
+  if (preview.value && preview.value !== 'pdf') {
+    URL.revokeObjectURL(preview.value)
+  }
+
   error.value = null
   selectedFile.value = file
   const fileName = file.name.toLowerCase()
   isPdf.value = file.type === 'application/pdf' || fileName.endsWith('.pdf')
-  preview.value = 'file'
+  preview.value = isPdf.value ? 'pdf' : URL.createObjectURL(file)
 }
 
 function onDrop(e: DragEvent) {
@@ -58,6 +62,7 @@ function onInputChange(e: Event) {
 }
 
 function clearFile() {
+  if (preview.value && preview.value !== 'pdf') URL.revokeObjectURL(preview.value)
   selectedFile.value = null
   preview.value = null
   isPdf.value = false
@@ -95,7 +100,7 @@ function fileSizeLabel(size: number) {
       <input
         id="file-upload"
         type="file"
-        accept=".pdf,.html,.tex,.latex,application/pdf,text/html,text/x-tex,application/x-tex"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
         class="sr-only"
         @change="onInputChange"
       />
@@ -142,7 +147,7 @@ function fileSizeLabel(size: number) {
             <circle cx="9" cy="9" r="2" />
             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
           </svg>
-          PDF, HTML, LaTeX
+          JPEG, PNG, WebP, PDF
         </span>
         <span class="h-3 w-px bg-[hsl(var(--border))]" />
         <span>Max 10MB</span>
@@ -167,17 +172,13 @@ function fileSizeLabel(size: number) {
           </svg>
           <span class="text-sm font-medium text-foreground">PDF Document</span>
         </div>
-        <!-- Generic document preview -->
-        <div v-else class="flex h-full w-full flex-col items-center justify-center gap-3 bg-[hsl(var(--background)/0.5)] p-4">
-          <svg class="h-16 w-16 text-primary/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <line x1="10" y1="9" x2="8" y2="9" />
-          </svg>
-          <span class="text-sm font-medium text-foreground">Document File</span>
-        </div>
+        <!-- Image preview -->
+        <img
+          v-else
+          :src="preview!"
+          alt="Preview of uploaded handwritten notes"
+          class="h-full w-full object-contain bg-[hsl(var(--background)/0.5)] p-4"
+        />
         <button
           type="button"
           class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--background)/0.8)] text-foreground backdrop-blur-sm transition-colors hover:bg-destructive hover:text-destructive-foreground"

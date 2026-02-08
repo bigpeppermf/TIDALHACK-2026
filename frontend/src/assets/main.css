@@ -3,6 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── Font: NBAkademieProMono400 ──
+   Place your .woff2 file at: public/fonts/NBAkademieProMono400.woff2
+   If you have .woff or .otf instead, update the src and format below.
+*/
+@font-face {
+  font-family: 'NBAkademieProMono400';
+  src: url('/fonts/NBAkademieProMono400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: 0 0% 0%;
   --foreground: 0 0% 95%;
@@ -10,20 +22,20 @@
   --card-foreground: 0 0% 95%;
   --popover: 0 0% 4%;
   --popover-foreground: 0 0% 95%;
-  --primary: 270 70% 72%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 270 60% 55%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 270 8% 12%;
   --secondary-foreground: 0 0% 90%;
   --muted: 270 6% 12%;
   --muted-foreground: 270 5% 55%;
-  --accent: 270 70% 72%;
-  --accent-foreground: 0 0% 0%;
+  --accent: 270 60% 55%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 63% 31%;
   --destructive-foreground: 0 0% 95%;
   --border: 270 4% 16%;
   --input: 270 4% 16%;
-  --ring: 270 70% 72%;
-  --chart-1: 270 70% 72%;
+  --ring: 270 60% 55%;
+  --chart-1: 270 60% 55%;
   --chart-2: 280 60% 65%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
@@ -31,12 +43,12 @@
   --radius: 0.625rem;
   --sidebar-background: 0 0% 4%;
   --sidebar-foreground: 0 0% 95%;
-  --sidebar-primary: 270 70% 72%;
-  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-primary: 270 60% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 270 6% 12%;
   --sidebar-accent-foreground: 0 0% 95%;
   --sidebar-border: 270 4% 16%;
-  --sidebar-ring: 270 70% 72%;
+  --sidebar-ring: 270 60% 55%;
 }
 
 @theme inline {
@@ -104,9 +116,9 @@
 }
 
 .glow-teal {
-  box-shadow: 0 0 60px 10px hsla(270, 70%, 72%, 0.08);
+  box-shadow: 0 0 60px 10px hsla(270, 60%, 55%, 0.12);
 }
 
 .glow-line {
-  background: linear-gradient(90deg, transparent, hsl(270 70% 72% / 0.3), transparent);
+  background: linear-gradient(90deg, transparent, hsl(270 60% 55% / 0.35), transparent);
 }

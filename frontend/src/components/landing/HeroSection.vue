@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { motion } from 'motion-v'
+import { motion, AnimatePresence } from 'motion-v'
 
 const heroRef = ref<HTMLElement | null>(null)
 const started = ref(false)
 
 // ── Animation phases ──
-// Phase 1: Typewriter — types "monograph" in a monospace cursor style
-// Phase 2: Select — highlights the text like a text selection
-// Phase 3: Transform — text morphs into the big styled font + mouse glow activates
+// Phase 1: Handwritten — "monograph" appears in a handwriting style with an ink stroke effect
+// Phase 2: Select — a purple highlight sweeps across, "selecting" the handwritten text
+// Phase 3: Fall — text falls from the very TOP of the page, heavy spring with bounce
+// Phase 4: Glow — mouse-reactive dramatic purple shadow
 
-type Phase = 'idle' | 'typing' | 'selecting' | 'transforming' | 'glowing'
+type Phase = 'idle' | 'handwriting' | 'selecting' | 'falling' | 'glowing'
 const phase = ref<Phase>('idle')
 
-const fullText = 'monograph'
-const typedCount = ref(0)
-const displayedText = computed(() => fullText.slice(0, typedCount.value))
-const selectWidth = ref(0) // 0–100 percentage
+const showHandwritten = ref(false)
+const selectWidth = ref(0)
 const showFinal = ref(false)
+const hideHandwritten = ref(false)
 
 // ── Mouse glow tracking ──
 const mouseX = ref(0.5)
@@ -27,15 +27,17 @@ const mouseY = ref(0.5)
 const glowStyle = computed(() => {
   if (phase.value !== 'glowing') return {}
 
-  const dx = (mouseX.value - 0.5) * 60
-  const dy = (mouseY.value - 0.5) * 60
+  const dx = (mouseX.value - 0.5) * 80
+  const dy = (mouseY.value - 0.5) * 80
 
   return {
     textShadow: [
-      `${dx * 0.3}px ${dy * 0.3}px 8px hsl(var(--primary) / 0.4)`,
-      `${dx * 0.6}px ${dy * 0.6}px 20px hsl(var(--primary) / 0.25)`,
-      `${dx}px ${dy}px 40px hsl(var(--primary) / 0.15)`,
-      `${dx * 1.4}px ${dy * 1.4}px 70px hsl(var(--primary) / 0.08)`,
+      `${dx * 0.2}px ${dy * 0.2}px 6px hsl(var(--primary) / 0.6)`,
+      `${dx * 0.4}px ${dy * 0.4}px 16px hsl(var(--primary) / 0.45)`,
+      `${dx * 0.7}px ${dy * 0.7}px 32px hsl(var(--primary) / 0.3)`,
+      `${dx}px ${dy}px 55px hsl(var(--primary) / 0.2)`,
+      `${dx * 1.3}px ${dy * 1.3}px 80px hsl(var(--primary) / 0.12)`,
+      `${dx * 1.6}px ${dy * 1.6}px 120px hsl(var(--primary) / 0.06)`,
     ].join(', '),
   }
 })
@@ -56,29 +58,26 @@ async function runSequence() {
   if (started.value) return
   started.value = true
 
-  // Phase 1: Typing
-  phase.value = 'typing'
-  typedCount.value = 0
-  for (let i = 1; i <= fullText.length; i++) {
-    typedCount.value = i
-    await sleep(80 + Math.random() * 60) // natural typing speed
-  }
-  await sleep(400)
+  // Phase 1: Handwritten text appears with ink-stroke reveal
+  phase.value = 'handwriting'
+  showHandwritten.value = true
+  await sleep(1800) // let the stroke animation play
 
-  // Phase 2: Selection sweep
+  // Phase 2: Selection sweep over the handwritten text
   phase.value = 'selecting'
-  const steps = 20
+  const steps = 24
   for (let i = 1; i <= steps; i++) {
     selectWidth.value = (i / steps) * 100
-    await sleep(18)
+    await sleep(16)
   }
-  await sleep(500)
+  await sleep(600)
 
-  // Phase 3: Transform into final styled text
-  phase.value = 'transforming'
-  await sleep(100)
+  // Phase 3: Hide handwritten, show final falling text
+  hideHandwritten.value = true
+  await sleep(200)
+  phase.value = 'falling'
   showFinal.value = true
-  await sleep(1200) // let Motion spring animation play
+  await sleep(1600) // spring fall animation
 
   // Phase 4: Glow active
   phase.value = 'glowing'
@@ -93,7 +92,7 @@ onMounted(() => {
         runSequence()
       }
     },
-    { threshold: 0.4 },
+    { threshold: 0.3 },
   )
   if (heroRef.value) observer.observe(heroRef.value)
 })
@@ -114,16 +113,21 @@ onUnmounted(() => {
     <div class="relative z-10 mx-auto flex w-full max-w-7xl justify-center px-6 pt-24 pb-16">
       <div class="flex max-w-4xl flex-col items-center text-center">
 
-        <!-- ── Typewriter + Select Phase ── -->
+        <!-- ── Phase 1 & 2: Handwritten + Selection ── -->
         <div
-          v-if="!showFinal"
-          class="typewriter-stage"
+          v-if="showHandwritten && !hideHandwritten"
+          class="handwritten-stage"
         >
-          <span class="typewriter-text">{{ displayedText }}</span>
-          <span
-            class="typewriter-cursor"
-            :class="{ 'cursor-blink': phase === 'typing' || phase === 'idle' }"
-          >|</span>
+          <svg class="handwritten-svg" viewBox="0 0 600 100" xmlns="http://www.w3.org/2000/svg">
+            <text
+              x="50%"
+              y="70"
+              text-anchor="middle"
+              class="handwritten-text-svg"
+            >
+              monograph
+            </text>
+          </svg>
 
           <!-- Selection overlay -->
           <div
@@ -133,21 +137,34 @@ onUnmounted(() => {
           />
         </div>
 
-        <!-- ── Final Transformed Text (with glow) ── -->
+        <!-- ── Phase 3 & 4: Fall from Top + Glow ── -->
         <div v-if="showFinal" class="fall-stage">
           <motion.span
-            :initial="{ opacity: 0, y: -80, scale: 0.85, filter: 'blur(8px)' }"
-            :animate="{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }"
-            :transition="{ type: 'spring', visualDuration: 0.6, bounce: 0.2 }"
+            :initial="{ opacity: 0, y: '-60vh', scale: 0.7, filter: 'blur(12px)', rotate: -8 }"
+            :animate="{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotate: 0 }"
+            :transition="{
+              type: 'spring',
+              stiffness: 80,
+              damping: 12,
+              mass: 1.2,
+              velocity: 2,
+            }"
             class="fall-word mono-word"
             :style="glowStyle"
           >
             mono
           </motion.span>
           <motion.span
-            :initial="{ opacity: 0, y: -80, scale: 0.85, filter: 'blur(8px)' }"
-            :animate="{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }"
-            :transition="{ type: 'spring', visualDuration: 0.7, bounce: 0.25, delay: 0.15 }"
+            :initial="{ opacity: 0, y: '-65vh', scale: 0.7, filter: 'blur(12px)', rotate: 5 }"
+            :animate="{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotate: 0 }"
+            :transition="{
+              type: 'spring',
+              stiffness: 70,
+              damping: 11,
+              mass: 1.4,
+              velocity: 2,
+              delay: 0.12,
+            }"
             class="fall-word graph-word"
             :style="glowStyle"
           >
@@ -158,7 +175,7 @@ onUnmounted(() => {
         <motion.p
           :initial="{ opacity: 0, y: 20 }"
           :animate="showFinal ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }"
-          :transition="{ duration: 0.6, delay: 0.4 }"
+          :transition="{ duration: 0.6, delay: 0.6 }"
           class="mt-10 max-w-2xl text-center text-lg text-muted-foreground md:text-xl"
         >
           Upload your notes and shape the page around this motion-led identity. Keep iterating on layout while this
@@ -168,7 +185,7 @@ onUnmounted(() => {
         <motion.div
           :initial="{ opacity: 0, y: 20 }"
           :animate="showFinal ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }"
-          :transition="{ duration: 0.6, delay: 0.6 }"
+          :transition="{ duration: 0.6, delay: 0.8 }"
           class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row"
         >
           <RouterLink
@@ -188,7 +205,7 @@ onUnmounted(() => {
         <motion.div
           :initial="{ opacity: 0, y: 20 }"
           :animate="showFinal ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }"
-          :transition="{ duration: 0.6, delay: 0.8 }"
+          :transition="{ duration: 0.6, delay: 1.0 }"
           class="mt-14 grid grid-cols-3 gap-8 border-t border-border/50 pt-8"
         >
           <div class="flex flex-col items-center gap-1">
@@ -210,35 +227,45 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ── Typewriter Phase ── */
-.typewriter-stage {
+/* ── Handwritten Phase ── */
+.handwritten-stage {
   position: relative;
-  display: inline-block;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 400;
-  color: hsl(var(--foreground));
-  line-height: 1.2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
 }
 
-.typewriter-text {
-  position: relative;
-  z-index: 2;
+.handwritten-svg {
+  width: clamp(320px, 60vw, 600px);
+  height: 100px;
+  overflow: visible;
 }
 
-.typewriter-cursor {
-  color: hsl(var(--primary));
-  font-weight: 300;
-  margin-left: 2px;
+.handwritten-text-svg {
+  font-family: 'Caveat', 'Dancing Script', 'Segoe Script', 'Comic Sans MS', cursive;
+  font-size: 64px;
+  font-weight: 700;
+  fill: none;
+  stroke: hsl(var(--foreground));
+  stroke-width: 1.5;
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+  animation: stroke-write 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+             stroke-fill 0.4s ease-in 1.2s forwards;
 }
 
-.cursor-blink {
-  animation: blink 800ms steps(1) infinite;
+@keyframes stroke-write {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+@keyframes stroke-fill {
+  to {
+    fill: hsl(var(--foreground));
+    stroke-width: 0;
+  }
 }
 
 .select-overlay {
@@ -246,14 +273,14 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   height: 100%;
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 3px;
+  background: hsl(var(--primary) / 0.35);
+  border-radius: 4px;
   z-index: 1;
   pointer-events: none;
-  transition: width 18ms linear;
+  transition: width 16ms linear;
 }
 
-/* ── Final Styled Text ── */
+/* ── Fall Stage ── */
 .fall-stage {
   display: flex;
   flex-direction: column;
@@ -265,9 +292,10 @@ onUnmounted(() => {
 .fall-word {
   display: block;
   line-height: 0.86;
+  font-family: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, monospace;
   color: hsl(var(--foreground));
   will-change: transform, opacity, filter, text-shadow;
-  transition: text-shadow 0.15s ease-out;
+  transition: text-shadow 0.12s ease-out;
 }
 
 .mono-word {
@@ -284,6 +312,10 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .fall-stage {
     transform: rotate(-14deg);
+  }
+
+  .handwritten-text-svg {
+    font-size: 48px;
   }
 }
 </style>

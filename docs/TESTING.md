@@ -186,6 +186,23 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
+#### DB + LaTeX storage tests:
+
+```
+tests/dbtex/
+├── conftest.py
+├── test_models.py
+├── test_crud.py
+├── test_routes_tex.py
+└── test_integration_tex_flow.py
+```
+
+Run:
+
+```bash
+pytest tests/dbtex -v
+```
+
 #### Ad hoc conversion scripts
 
 ```bash

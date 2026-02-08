@@ -53,25 +53,25 @@ const statusConfig = computed(() => {
 
 <template>
   <div
-    class="group flex items-center gap-4 rounded-xl border border-transparent bg-[#131316] p-4 transition-all hover:border-[#2d2d38] hover:bg-[#1a1a1f] hover:shadow-lg"
+    class="group flex items-center gap-4 rounded-xl border border-transparent bg-card p-4 transition-all hover:border-border hover:bg-secondary hover:shadow-lg"
   >
     <!-- Thumbnail -->
-    <div class="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#0a0a0b]">
+    <div class="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background">
       <img
         v-if="project.thumbnail"
         :src="project.thumbnail"
         :alt="project.name"
         class="h-full w-full object-cover"
       />
-      <FileText v-else class="h-8 w-8 text-gray-600" />
+      <FileText v-else class="h-8 w-8 text-muted-foreground/50" />
     </div>
 
     <!-- Info -->
     <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <h4 class="truncate text-sm font-medium text-gray-200">
+      <h4 class="truncate text-sm font-medium text-foreground">
         {{ project.name }}
       </h4>
-      <p class="text-xs text-gray-500">
+      <p class="text-xs text-muted-foreground">
         Updated {{ project.updatedAt }}
       </p>
       <span
@@ -93,7 +93,7 @@ const statusConfig = computed(() => {
     <!-- Hover Actions -->
     <div class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
       <button
-        class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#2d2d38] hover:text-purple-400"
+        class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
         title="View"
         @click="$emit('view', project.id)"
       >
@@ -101,7 +101,7 @@ const statusConfig = computed(() => {
       </button>
       <button
         v-if="project.status === 'converted'"
-        class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#2d2d38] hover:text-purple-400"
+        class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
         title="Edit"
         @click="$emit('edit', project.id)"
       >
@@ -109,7 +109,7 @@ const statusConfig = computed(() => {
       </button>
       <button
         v-if="project.status === 'failed'"
-        class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#2d2d38] hover:text-yellow-400"
+        class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-yellow-400"
         title="Retry"
         @click="$emit('retry', project.id)"
       >

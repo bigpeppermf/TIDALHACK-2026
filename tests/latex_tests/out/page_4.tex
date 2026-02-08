@@ -2,28 +2,25 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage[utf8]{inputenc}
 \usepackage{geometry}
-\usepackage{xcolor} % Required for \textcolor
+\usepackage{xcolor}
 \geometry{a4paper, margin=1in}
 
 \begin{document}
 
-\section*{Example 2 Find $h'(4)$ for $h(x) = \sqrt{4+5f(x)}$ where $f(4)=9$ and $f'(4)=7$}
+\section*{Example 2}
+Find $h'(4)$ for $h(x) = \sqrt{4+5f(x)}$ where $f(4)=9$ and $f'(4)=7$
 \begin{align*}
 h(x) &= (4+5f(x))^{\frac{1}{2}} \\
-h'(x) &= \frac{1}{2} (4+5f(x))^{-\frac{1}{2}} \cdot 5f'(x) \\
-h'(4) &= \frac{1}{2} (4+5f(4))^{-\frac{1}{2}} \cdot 5f'(4) \\
-&= \frac{1}{2} (4+5 \cdot 9)^{-\frac{1}{2}} \cdot 5 \cdot 7 \\
-&= \frac{1}{2} (4+45)^{-\frac{1}{2}} \cdot 35 \\
-&= \frac{1}{2} (49)^{-\frac{1}{2}} \cdot 35 \\
-&= \frac{1}{2} \cdot \frac{1}{\sqrt{49}} \cdot 35 \\
-&= \frac{1}{2} \cdot \frac{1}{7} \cdot 35 \\
-&= \frac{35}{14} = \frac{5}{2}
+h'(x) &= \frac{1}{2} (4+5f(x))^{-\frac{1}{2}} 5f'(x) \\
+h'(4) &= \frac{1}{2} (4+5f(4))^{-\frac{1}{2}} 5f'(4) = \frac{1}{2} (4+45)^{-\frac{1}{2}} \cdot 5 \cdot 7 \\
+&= \frac{1}{2} \frac{1}{\sqrt{49}} \cdot 5 \cdot 7 = \frac{1}{2} \cdot \frac{1}{7} \cdot 5 \cdot 7 = \frac{5}{2}
 \end{align*}
 
 \section*{Derivative of $y=a^x$}
-For any $a>0$, $e^{\ln a}=a$ (why?)
-$a \xrightarrow{\ln} \ln a \xrightarrow{\exp} e^{\ln a} = a$
+For any $a>0$, $e^{\ln a} = a$ (why?) \\
+$a \xrightarrow{\ln} \ln a \xrightarrow{\text{exp}} e^{\ln a} = a$ \\
 $\ln x$ is the inverse of $e^x$
+
 By the chain rule,
 \begin{align*}
 \frac{d}{dx} a^x &= \frac{d}{dx} (e^{\ln a})^x \\
@@ -32,32 +29,42 @@ By the chain rule,
 &= a^x \cdot \ln a
 \end{align*}
 
-\section*{Theorem The derivative of exponential function $y=a^x$ is}
+\section*{Theorem}
+The derivative of exponential function $y=a^x$ is
 \begin{align*}
-(a^x)' &= \ln a \cdot a^x \\
+(a^x)' &= \ln a \ a^x \\
 (e^x)' &= \ln e \cdot e^x = e^x
 \end{align*}
+
 For example, the tangent line of $y=2^x$ at $x=0$ has the slope
-$(2^x)' = \ln 2 \cdot 2^x \Rightarrow \ln 2 \cdot 2^0 = \ln 2$
-% [Diagram: Graph of y=2^x with a tangent line at x=0, showing slope = ln 2]
-\fbox{\parbox[c][3cm][c]{5cm}{\centering Graph Placeholder}}
+\begin{align*}
+(2^x)' &= \ln 2 \ 2^x \\
+&\Rightarrow \ln 2 \cdot 2^0 = \ln 2
+\end{align*}
+
+% [Diagram: Graph of y=2^x with a tangent line at x=0]
+\begin{center}
+\fbox{\parbox[c][3cm][c]{5cm}{\centering Graph placeholder for $y=2^x$ with tangent line at $x=0$. Slope = $\ln 2$.}}
+\end{center}
 
 \section*{Example 3}
 (1) $f(x) = 4^{\cos \pi x}$
-$X \mapsto \cos \pi x \mapsto 4^{\cos \pi x}$
+$x \mapsto \cos \pi x \mapsto 4^{\cos \pi x}$
 \begin{align*}
 f'(x) &= \ln 4 \cdot 4^{\cos \pi x} (\cos \pi x)' \\
 &= \ln 4 \cdot 4^{\cos \pi x} (-\sin \pi x) \pi
 \end{align*}
+
 (2) $f(x) = x^6 4^{(x^6+2)}$
 \begin{align*}
-f' &= (6x^5) 4^{(x^6+2)} + x^6 (\ln 4 \cdot 4^{(x^6+2)} (6x^5))
+f' &= 6x^5 4^{(x^6+2)} + x^6 \ln 4 \cdot 4^{(x^6+2)} (6x^5)
 \end{align*}
-What about the derivative of $(x^x)$? $(x^x)' = \ln x \cdot x^x$? No
+
+What about the derivative of $(x^x)$? $(x^x)' = \ln x \cdot x^x$ ? No
 
 \section*{Logarithmic Differentiation}
-\vspace{1cm} % Added to match original layout visually
 
+\vfill
 \begin{center}
 4
 \end{center}

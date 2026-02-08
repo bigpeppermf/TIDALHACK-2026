@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import AppNavbar from '@/components/layout/AppNavbar.vue'
 
 const sections = [
   { iconPath: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z', label: 'Profile', id: 'profile' },
@@ -21,26 +21,10 @@ const notifications = [
 
 <template>
   <div class="relative min-h-screen bg-background">
+    <AppNavbar />
     <div class="fixed inset-0 bg-grid-pattern opacity-20" />
 
-    <!-- Top bar -->
-    <div class="relative z-10 border-b border-border/50 bg-[hsl(var(--background)/0.8)] backdrop-blur-xl">
-      <div class="mx-auto flex max-w-7xl items-center gap-4 px-6 py-4">
-        <RouterLink
-          to="/"
-          class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m12 19-7-7 7-7M19 12H5" />
-          </svg>
-          Home
-        </RouterLink>
-        <div class="h-4 w-px bg-[hsl(var(--border))]" />
-        <span class="text-sm font-medium text-foreground">Settings</span>
-      </div>
-    </div>
-
-    <div class="relative z-10 mx-auto flex max-w-5xl gap-8 px-6 py-10">
+    <div class="relative z-10 mx-auto flex max-w-5xl gap-8 px-6 pt-10 pb-10">
       <!-- Sidebar nav -->
       <aside class="hidden w-48 shrink-0 md:block">
         <nav class="flex flex-col gap-1">

@@ -1,8 +1,14 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+
+# Load .env from project root (two levels up from this file)
+_env_path = Path(__file__).resolve().parents[3] / ".env"
+load_dotenv(_env_path)
 
 from app.routes.convert import router as convert_router
 from app.routes.export import router as export_router

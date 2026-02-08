@@ -50,9 +50,13 @@ sys.modules["app.db.base"] = base_module
 def _placeholder_get_db():
     raise RuntimeError("get_db dependency should be overridden in tests")
 
+def _placeholder_get_current_user():
+    raise RuntimeError("get_current_user dependency should be overridden in tests")
+
 
 deps_module = types.ModuleType("app.deps")
 deps_module.get_db = _placeholder_get_db
+deps_module.get_current_user = _placeholder_get_current_user
 sys.modules["app.deps"] = deps_module
 
 from app.db import models
@@ -119,14 +123,31 @@ def test_user_id():
 
 
 @pytest.fixture()
-def test_client(db_session):
+def test_client(db_session, test_user_id):
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
 
+    def override_get_current_user():
+        user = db_session.query(models.User).filter(models.User.id == test_user_id).first()
+        if user:
+            return user
+        user = models.User(
+            id=test_user_id,
+            oauth_provider="test-provider",
+            oauth_sub="test-sub",
+            email="user@example.com",
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
     fastapi_app.dependency_overrides[deps_module.get_db] = override_get_db
+    fastapi_app.dependency_overrides[deps_module.get_current_user] = override_get_current_user
     try:
         from fastapi.testclient import TestClient
 

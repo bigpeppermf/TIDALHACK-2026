@@ -1,6 +1,8 @@
+import base64
 import os
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 
 SYSTEM_PROMPT = """You are an expert OCR and LaTeX typesetting engine specializing
@@ -47,20 +49,22 @@ def convert_image_to_latex(base64_image: str, context: str = "general") -> str:
     if not api_key:
         raise RuntimeError("Missing GEMINI_API_KEY")
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
     prompt = get_system_prompt(context)
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-    model = genai.GenerativeModel(
-        model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-        system_instruction=prompt,
+    response = client.models.generate_content(
+        model=model_name,
+        contents=[
+            types.Part.from_bytes(
+                data=base64.b64decode(base64_image),
+                mime_type="image/jpeg",
+            ),
+        ],
+        config=types.GenerateContentConfig(
+            system_instruction=prompt,
+        ),
     )
-
-    response = model.generate_content([
-        {
-            "mime_type": "image/jpeg",
-            "data": base64_image,
-        }
-    ])
 
     return response.text

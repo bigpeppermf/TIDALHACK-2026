@@ -2,7 +2,6 @@ fastapi
 uvicorn
 python-dotenv
 google-genai
-google-generativeai
 python-multipart
 pdf2image
 pillow

@@ -8,10 +8,10 @@ const mobileOpen = ref(false)
 
 const navLinks = [
   { label: 'Home', to: '/' },
-  { label: 'Features', href: '#features' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Convert', to: '/convert' },
   { label: 'Editor', to: '/editor' },
   { label: 'Dashboard', to: '/dashboard' },
-  { label: 'Settings', to: '/settings' },
 ]
 </script>
 

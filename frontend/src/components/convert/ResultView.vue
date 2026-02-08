@@ -57,47 +57,51 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-/**
- * Safely render KaTeX without showing red error messages
- * Falls back to text display if rendering fails
- */
+const KATEX_MACROS: Record<string, string> = {
+  '\\R': '\\mathbb{R}',
+  '\\N': '\\mathbb{N}',
+  '\\Z': '\\mathbb{Z}',
+  '\\Q': '\\mathbb{Q}',
+  '\\C': '\\mathbb{C}',
+  '\\dx': '\\,dx',
+  '\\dy': '\\,dy',
+  '\\dt': '\\,dt',
+  '\\ds': '\\,ds',
+}
+
 function safeMathRender(tex: string, displayMode: boolean = false): string {
   try {
-    // First try to clean up common problematic patterns
     let cleanedTex = tex.trim()
-    
-    // Remove unsupported commands
     cleanedTex = cleanedTex.replace(/\\MATH/g, '')
     cleanedTex = cleanedTex.replace(/\\begin\{scope\}/g, '')
     cleanedTex = cleanedTex.replace(/\\end\{scope\}/g, '')
     cleanedTex = cleanedTex.replace(/\\foreach/g, '%')
-    
-    // Try to render with KaTeX
-    const rendered = katex.renderToString(cleanedTex, { 
-      displayMode, 
-      throwOnError: false, 
+    cleanedTex = cleanedTex.replace(/\\label\{[^}]*\}/g, '')
+    cleanedTex = cleanedTex.replace(/\\nonumber/g, '')
+    cleanedTex = cleanedTex.replace(/\\notag/g, '')
+    cleanedTex = cleanedTex.replace(/\\allowbreak/g, '')
+
+    return katex.renderToString(cleanedTex, {
+      displayMode,
+      throwOnError: false,
       strict: false,
-      errorColor: '#000'
+      output: 'htmlAndMathml',
+      errorColor: '#000',
+      trust: false,
+      macros: KATEX_MACROS,
     })
-    
-    // If KaTeX produced an error (contains error styling), return plain text
-    if (rendered.includes('error') || rendered.includes('red')) {
-      throw new Error('KaTeX error detected')
-    }
-    
-    return rendered
-  } catch (error) {
-    // Fallback: render as plain text in a subtle box
-    const text = tex.trim()
+  } catch {
+    const text = tex
+      .trim()
       .replace(/\\\\/g, '\n')
       .replace(/\$/g, '')
       .replace(/\{/g, '(')
       .replace(/\}/g, ')')
-      .substring(0, 100) // Truncate very long formulas
-    
-    return displayMode 
-      ? `<div class="my-6 p-3 bg-gray-100 border border-gray-300 rounded font-mono text-xs leading-relaxed overflow-x-auto text-gray-700">${escapeHtml(text)}</div>`
-      : `<code class="font-mono text-xs px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700">${escapeHtml(text)}</code>`
+      .slice(0, 120)
+
+    return displayMode
+      ? `<div class="my-6 overflow-x-auto rounded border border-black/10 bg-black/5 p-3 font-mono text-xs text-black">${escapeHtml(text)}</div>`
+      : `<code class="rounded border border-black/10 bg-black/5 px-1.5 py-0.5 font-mono text-xs text-black">${escapeHtml(text)}</code>`
   }
 }
 
@@ -283,9 +287,21 @@ const renderedPreview = computed(() => {
     return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
   })
 
-  // Handle align, equation environments
-  src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, _env, tex) => {
-    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
+  // Handle align, equation, gather, and other multi-line math environments
+  src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?|multline\*?|split|flalign\*?|eqnarray\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, env, tex) => {
+    let wrapped = tex
+    if (env.startsWith('align') || env === 'split' || env.startsWith('flalign') || env.startsWith('eqnarray')) {
+      wrapped = `\\begin{aligned}${tex}\\end{aligned}`
+    } else if (env.startsWith('gather') || env.startsWith('multline')) {
+      wrapped = `\\begin{gathered}${tex}\\end{gathered}`
+    } else if (tex.includes('\\\\')) {
+      wrapped = `\\begin{gathered}${tex}\\end{gathered}`
+    }
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(wrapped, true)}</div>`)
+  })
+  src = src.replace(/\\begin\{(cases|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix)\}([\s\S]*?)\\end\{\1\}/g, (_m, env, tex) => {
+    const wrapped = `\\begin{${env}}${tex}\\end{${env}}`
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(wrapped, true)}</div>`)
   })
 
   // Handle inline math - CRITICAL: Do this before escaping HTML
@@ -293,29 +309,29 @@ const renderedPreview = computed(() => {
     return insertSafeBlock(safeMathRender(tex, false))
   })
 
-  // Handle itemize/enumerate - process items recursively to catch nested math
   src = src.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_m, items) => {
-    const processedItems = items.split('\\item').filter((item: string) => item.trim()).map((item: string) => {
-      let processedItem = item.trim()
-      // Process any remaining inline math in list items
-      processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
-        return insertSafeBlock(safeMathRender(tex, false))
-      })
-      return `<li class="ml-6 mb-2">${processedItem}</li>`
-    }).join('')
+    const processedItems = items
+      .split('\\item')
+      .filter((item: string) => item.trim())
+      .map((item: string) => `<li class="ml-6 mb-2">${item.trim()}</li>`)
+      .join('')
     return insertSafeBlock(`<ul class="list-disc my-4">${processedItems}</ul>`)
   })
-  
   src = src.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_m, items) => {
-    const processedItems = items.split('\\item').filter((item: string) => item.trim()).map((item: string) => {
-      let processedItem = item.trim()
-      // Process any remaining inline math in list items
-      processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
-        return insertSafeBlock(safeMathRender(tex, false))
-      })
-      return `<li class="ml-6 mb-2">${processedItem}</li>`
-    }).join('')
+    const processedItems = items
+      .split('\\item')
+      .filter((item: string) => item.trim())
+      .map((item: string) => `<li class="ml-6 mb-2">${item.trim()}</li>`)
+      .join('')
     return insertSafeBlock(`<ol class="list-decimal my-4">${processedItems}</ol>`)
+  })
+
+  // Handle center and quote environments
+  src = src.replace(/\\begin\{center\}([\s\S]*?)\\end\{center\}/g, (_m, content) => {
+    return insertSafeBlock(`<div class="my-4 text-center">${content.trim()}</div>`)
+  })
+  src = src.replace(/\\begin\{quote\}([\s\S]*?)\\end\{quote\}/g, (_m, content) => {
+    return insertSafeBlock(`<blockquote class="my-4 border-l-4 border-border pl-4 italic text-muted-foreground">${content.trim()}</blockquote>`)
   })
 
   // Handle common LaTeX text commands BEFORE escaping
@@ -323,7 +339,14 @@ const renderedPreview = computed(() => {
   src = src.replace(/\\textit\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
   src = src.replace(/\\emph\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
   src = src.replace(/\\texttt\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<code class="font-mono text-sm">${escapeHtml(text)}</code>`))
-  
+  src = src.replace(/\\underline\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<span class="underline">${escapeHtml(text)}</span>`))
+
+  // Clean up remaining LaTeX commands
+  src = src.replace(/\\newpage/g, insertSafeBlock('<hr class="my-8 border-border" />'))
+  src = src.replace(/\\(vspace|hspace)\{[^}]*\}/g, '')
+  src = src.replace(/\\(hline|noindent|clearpage|pagebreak)/g, '')
+  src = src.replace(/\\\\(?!\[)/g, insertSafeBlock('<br />'))
+
   // Escape remaining HTML
   src = escapeHtml(src)
 
@@ -336,9 +359,13 @@ const renderedPreview = computed(() => {
     return `<p class="mb-4 text-base leading-relaxed">${text}</p>`
   }).join('')
   
-  // Restore safe blocks
-  src = src.replace(/@@SAFE_BLOCK_(\d+)@@/g, (_m, idx) => safeBlocks[Number(idx)] ?? '')
-  
+  // Restore safe blocks (loop until stable for nested blocks)
+  let previous = ''
+  while (src !== previous) {
+    previous = src
+    src = src.replace(/@@SAFE_BLOCK_(\d+)@@/g, (_m, idx) => safeBlocks[Number(idx)] ?? '')
+  }
+
   return src
 })
 

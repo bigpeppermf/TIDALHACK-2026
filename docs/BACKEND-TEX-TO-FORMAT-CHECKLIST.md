@@ -1,85 +1,63 @@
-# BACKEND – TeX File Export (PDF / HTML / TEX)
+# Backend TeX-to-Format Export – Checklist
 
-## Goal
-Allow users to download a stored LaTeX file as:
-- `.pdf`
-- `.html`
-- `.tex`
-
-The output format is determined by a backend query parameter.
+> Last updated: Feb 8, 2026
 
 ---
 
-## Phase 1 — Data Model & Inputs
-- [ ] Identify the primary key field used by the LaTeX file model (e.g., `tex_file_id`) and its type
-- [ ] Confirm the LaTeX source is already retrieved by the backend for this endpoint and available as a raw string
-- [ ] Validate `format` against the allowed set (`pdf | html | tex`) after trimming and lowercasing
-- [ ] Reject unsupported or missing `format` with 400 and an allowed-values message
+## PHASE 1 — Requirements
 
----
+- [x] Define supported output formats: `pdf`, `html`, `docx`, `md`
+- [x] Use pdflatex for PDF generation
+- [x] Use pandoc for HTML / DOCX / Markdown generation
+- [x] Return export results as bytes with MIME type metadata
 
-## Phase 2 — API Design
-- [x] Register `GET /api/tex-files/{id}/export` in the backend router
-- [x] Parse `id` from the path and `format` from the query string
-- [x] Authenticate the caller and enforce file ownership for the requested `id`
-- [ ] Ignore any client-supplied file paths; only server-created temp paths are used
+## PHASE 2 — API Design
 
----
+- [x] `POST /api/tex-export` route accepting `{ latex, format }`
+- [x] Validate `format` against allowed list
+- [x] Return file as streaming response with correct `Content-Type`
+- [x] Return `Content-Disposition` header for downloads
 
-## Phase 3 — TEX Output
-- [ ] Return the raw LaTeX source bytes encoded as UTF-8
-- [ ] Set headers:
-  - `Content-Type: application/x-tex`
-  - `Content-Disposition: attachment; filename="{slug}.tex"`
-- [ ] Derive `{slug}` from stored metadata; fall back to the file id if missing
+## PHASE 3 — PDF Export
 
----
+- [x] Write LaTeX to temporary `.tex` file
+- [x] Run `pdflatex` twice (for references / TOC)
+- [x] Read resulting `.pdf` bytes
+- [x] Return as `application/pdf`
+- [x] Handle compilation errors with log output
 
-## Phase 4 — PDF Generation
-- [ ] Create a unique temp directory per request
-- [ ] Write LaTeX source to `input.tex` within the temp directory
-- [ ] Execute `pdflatex` via a subprocess argument list (no shell) with:
-  - `-interaction=nonstopmode`
-  - `-halt-on-error`
-- [ ] Enforce a compile timeout and capture stdout/stderr
-- [ ] Verify `input.pdf` exists and is non-empty
-- [ ] Return PDF bytes with download headers
-- [ ] Cleanup the temp directory in a `finally`/defer block
+## PHASE 4 — HTML Export
 
----
+- [x] Write LaTeX to temporary `.tex` file
+- [x] Run `pandoc --from latex --to html --standalone --mathjax`
+- [x] Read resulting `.html` bytes
+- [x] Return as `text/html`
 
-## Phase 5 — HTML Generation (Accessible, MathML-first)
-- [ ] Create a unique temp directory per request
-- [ ] Write LaTeX source to `input.tex` within the temp directory
-- [ ] Execute `pandoc` via a subprocess argument list (no shell) to produce `output.html`
-- [ ] Use `-f latex -t html --mathml -s` to emit semantic HTML + MathML
-- [ ] Verify `output.html` exists and is non-empty
-- [ ] Return HTML bytes with `Content-Type: text/html` and download headers
-- [ ] Confirm MathML is present and no image-based equations are emitted
-- [ ] Verify screen-reader compatibility (VoiceOver/NVDA/JAWS) on sample output
-- [ ] Cleanup the temp directory in a `finally`/defer block
+## PHASE 5 — DOCX / Markdown Export
 
----
+- [x] DOCX: `pandoc --from latex --to docx`
+- [x] Markdown: `pandoc --from latex --to markdown`
+- [x] Return with correct MIME types
 
-## Phase 6 — Error Handling
-- [ ] Invalid or missing format → 400
-- [ ] File not found → 404
-- [ ] Unauthorized access → 403
-- [ ] LaTeX compile failure → 422 with stderr excerpt
-- [ ] Tool missing or not executable → 500 with actionable error
+## PHASE 6 — Error Handling
 
----
+- [x] Catch `FileNotFoundError` when pdflatex / pandoc not installed
+- [x] Catch `subprocess.CalledProcessError` for compilation failures
+- [x] Return meaningful error messages to client
+- [ ] Add timeout for long-running compilations
+- [ ] Sanitize LaTeX input to prevent shell injection
 
-## Phase 7 — Security & Stability
-- [ ] Invoke external tools with a fixed argument list (no `shell=True`)
-- [ ] Run conversions in isolated temp directories only
-- [ ] Enforce maximum LaTeX source size before writing to disk
-- [ ] Enforce subprocess timeouts for both PDF and HTML conversions
+## PHASE 7 — Integration
 
----
+- [x] Wire route into FastAPI app via `app.include_router`
+- [x] Frontend `useExport` composable calls the endpoint
+- [x] Editor page export button triggers download
+- [ ] Add progress indicator for large exports
 
-## Phase 8 — Testing
-- [ ] Unit test: `format` validation (valid, invalid, missing)
-- [ ] Integration test: PDF generation from minimal LaTeX fixture
-- [ ] Integration test: HTML generation from minimal LaTeX fixture
-- [ ] Snapshot test: `.tex` download body and headers
+## PHASE 8 — Testing
+
+- [x] Basic API test exists (`test_tex_export_route.py`)
+- [x] HTML export test exists (`test_tex_export_html.py`)
+- [ ] Test each format independently
+- [ ] Test error cases (invalid format, bad LaTeX)
+- [ ] Test large document export

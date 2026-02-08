@@ -1,17 +1,44 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Eye, Edit3, RotateCcw, FileText, Loader2, AlertCircle } from 'lucide-vue-next'
+import { Eye, Edit3, RotateCcw, Trash2, FileText, Loader2, AlertCircle } from 'lucide-vue-next'
 import type { ProjectRecord } from '@/types/project'
 
 const props = defineProps<{
   project: ProjectRecord
+  deleting?: boolean
 }>()
 
 const emit = defineEmits<{
   view: [id: string]
   edit: [id: string]
   retry: [id: string]
+  delete: [id: string]
 }>()
+
+const latexSnippet = computed(() => {
+  const latex = props.project.latex
+  if (!latex) return ''
+  let body = latex
+  const beginIdx = body.indexOf('\\begin{document}')
+  const endIdx = body.indexOf('\\end{document}')
+  if (beginIdx !== -1 && endIdx !== -1) {
+    body = body.slice(beginIdx + 16, endIdx)
+  }
+  body = body
+    .replace(/\\(section|subsection|subsubsection)\*?\{[^}]*\}/g, '')
+    .replace(/\\[a-zA-Z]+(\[[^\]]*\])?\{[^}]*\}/g, (m) => {
+      const inner = m.match(/\{([^}]*)\}/)
+      return inner ? inner[1] : ''
+    })
+    .replace(/\\\[[\s\S]*?\\\]/g, '[equation]')
+    .replace(/\$\$[\s\S]*?\$\$/g, '[equation]')
+    .replace(/\$([^$]+?)\$/g, '$1')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return body.slice(0, 120) + (body.length > 120 ? '...' : '')
+})
 
 const statusConfig = computed(() => {
   const configs = {
@@ -64,23 +91,28 @@ const statusConfig = computed(() => {
       <h4 class="truncate text-sm font-medium text-foreground">
         {{ project.name }}
       </h4>
-      <p class="text-xs text-muted-foreground">
-        Updated {{ project.updatedAt }}
+      <p v-if="latexSnippet" class="truncate text-xs text-muted-foreground/70 italic">
+        {{ latexSnippet }}
       </p>
-      <span
-        :class="[
-          'inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
-          statusConfig.bgClass,
-          statusConfig.textClass,
-          statusConfig.borderClass,
-        ]"
-      >
-        <component
-          :is="statusConfig.icon"
-          :class="['h-3 w-3', statusConfig.iconClass, project.status === 'processing' ? 'animate-spin' : '']"
-        />
-        {{ statusConfig.label }}
-      </span>
+      <div class="flex items-center gap-2">
+        <p class="text-xs text-muted-foreground">
+          Updated {{ project.updatedAt }}
+        </p>
+        <span
+          :class="[
+            'inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
+            statusConfig.bgClass,
+            statusConfig.textClass,
+            statusConfig.borderClass,
+          ]"
+        >
+          <component
+            :is="statusConfig.icon"
+            :class="['h-3 w-3', statusConfig.iconClass, project.status === 'processing' ? 'animate-spin' : '']"
+          />
+          {{ statusConfig.label }}
+        </span>
+      </div>
     </div>
 
     <!-- Hover Actions -->
@@ -107,6 +139,14 @@ const statusConfig = computed(() => {
         @click="$emit('retry', project.id)"
       >
         <RotateCcw class="h-4 w-4" />
+      </button>
+      <button
+        class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        title="Delete"
+        :disabled="deleting"
+        @click.stop="$emit('delete', project.id)"
+      >
+        <Trash2 class="h-4 w-4" />
       </button>
     </div>
   </div>

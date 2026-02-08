@@ -14,6 +14,8 @@ from app.routes.convert import router as convert_router
 from app.routes.export import router as export_router
 from app.routes.tex_export import router as tex_export_router
 from app.routes import tex
+from app.db.base import Base
+from app.db.session import engine
 
 app = FastAPI()
 
@@ -29,8 +31,12 @@ def _auth_env_ready() -> None:
 
 
 @app.on_event("startup")
-def _validate_auth_env():
+def _startup():
     _auth_env_ready()
+    # Auto-create database tables if they don't exist
+    if engine is not None:
+        import app.db.models  # noqa: F401 — ensure models are registered
+        Base.metadata.create_all(bind=engine)
 
 
 # CORS

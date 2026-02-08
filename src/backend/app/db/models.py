@@ -12,13 +12,16 @@ relationships
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Text, TIMESTAMP, ForeignKey
+from sqlalchemy import Column, Index, Text, TIMESTAMP, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from .base import Base
 
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index("ix_users_oauth", "oauth_provider", "oauth_sub", unique=True),
+    )
 
     id = Column(
         UUID(as_uuid=True),
@@ -60,6 +63,9 @@ class User(Base):
 
 class TexFile(Base):
     __tablename__ = "tex_files"
+    __table_args__ = (
+        Index("ix_tex_files_user_id", "user_id"),
+    )
 
     id = Column(
         UUID(as_uuid=True),

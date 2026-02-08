@@ -1,11 +1,14 @@
 import { useAuth } from '@clerk/vue'
+import { toValue } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
 
 export function useAuthFetch() {
-  const { getToken } = useAuth()
+  const auth = useAuth()
 
   async function authFetch(input: RequestInfo | URL, init: RequestInit = {}) {
     let token: string | null = null
-    if (typeof getToken === 'function') {
+    const getToken = toValue(auth.getToken as unknown as MaybeRefOrGetter<(() => Promise<string | null>) | undefined>)
+    if (getToken) {
       token = await getToken()
     } else if (typeof window !== 'undefined') {
       const clerk = (window as unknown as { Clerk?: { session?: { getToken?: () => Promise<string | null> } } }).Clerk

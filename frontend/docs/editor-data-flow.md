@@ -1,48 +1,146 @@
-# Editor Data Flow (PDF/Image -> LaTeX -> Dashboard -> Editor)
+# Editor Data Flow
 
-## What is functional now
-- Conversion output from `/convert` is persisted as a project record, including generated `latex`.
-- Dashboard `View` and `Edit` now route to `/editor?projectId=<id>`.
-- `/editor` loads the requested project and autosaves LaTeX edits back to the same project record.
-- If `projectId` is missing, `/editor` falls back to the most recent project, then to the default template.
-- Frontend is bridged to backend Postgres routes at `/api/tex` (`GET list`, `GET by id`, `POST`, `PUT`).
+> How data flows through the Editor page.
 
-## Local storage contracts
-- `monogram-projects`:
-  - Array of `ProjectRecord` objects with fields:
-    - `id`, `name`, `status`, `updatedAt`, `updatedAtIso`
-    - `latex`
-    - `sourceFilename`, `sourceKind` (`pdf` | `image` | `unknown`)
-    - `thumbnail` (optional)
-    - `ownerId` (Clerk-ready, optional)
+---
 
-## Clerk readiness
-- Current UI derives identity from Clerk (`useAuth`) and no longer reads `clerk-user-id` from `localStorage`.
-- `useProjects(ownerId)` filters dashboard/editor records per owner.
-- New projects store `ownerId`, so Clerk user scoping can be enabled by setting that value after auth.
+## 1. Entry Point
 
-## Backend bridge
-- The frontend now uses your existing backend routes directly:
-  - `GET /api/tex?limit=...`
-  - `GET /api/tex/{id}`
-  - `POST /api/tex`
-  - `PUT /api/tex/{id}`
-- In local development, Vite proxies `/api/*` to `http://localhost:8000`.
-- If the backend is unreachable, local fallback records still work for editing.
+User navigates to `/editor?id=<projectId>` from the Dashboard (clicking a `ProjectRow`).
 
-## Recommended backend shape (for Clerk + DB)
-- Table: `projects`
-  - `id` (text/uuid, primary key)
-  - `owner_id` (text, indexed; Clerk user ID)
-  - `name` (text)
-  - `status` (text)
-  - `latex` (text)
-  - `source_filename` (text)
-  - `source_kind` (text)
-  - `thumbnail` (text nullable)
-  - `updated_at` (timestamp)
-- API behavior:
-  - Validate Clerk session server-side.
-  - Enforce `owner_id === auth.userId`.
-  - Upsert on `PUT /projects/:id`.
-  - Return only caller-owned rows.
+---
+
+## 2. Load Flow
+
+```
+EditorPage.vue mounted
+  └─ useProjects().loadProjectDetail(id)
+       └─ authFetch(`/api/tex/${id}`)
+            └─ Backend: deps.get_current_user → Clerk JWT → User
+            └─ Backend: crud.get_tex_file(db, id, user.id)
+            └─ Returns: { id, filename, latex, created_at, updated_at }
+       └─ upsertProject(detailToProject(response))
+       └─ Updates projectsState ref + localStorage
+  └─ CodeMirror initialized with project.latex
+  └─ File tree loaded via fetchProjectFiles(id)
+       └─ authFetch(`/api/tex/${id}/files`)
+       └─ Returns: { files: [{ path, kind, editable, stored }] }
+```
+
+---
+
+## 3. Edit Flow
+
+```
+User types in CodeMirror
+  └─ @update:modelValue fires
+  └─ Debounced saveLatex(id, newLatex)
+       └─ authFetch PUT `/api/tex/${id}` { latex: newLatex }
+       └─ Backend: crud.update_tex_file(db, id, user.id, latex=newLatex)
+       └─ Returns: updated file
+       └─ upsertProject() updates local state + localStorage
+```
+
+---
+
+## 4. Compile Flow
+
+```
+User clicks "Compile" button
+  └─ useProjects().compileProject(id)
+       └─ authFetch POST `/api/tex/${id}/compile`
+       └─ Backend:
+            └─ crud.get_tex_file(db, id, user.id)
+            └─ Write latex to temp file
+            └─ Run `pdflatex` twice
+            └─ Read PDF bytes → base64 encode
+            └─ Return: { success: true, pdf_base64: "..." }
+       └─ decodeBase64ToBytes(pdf_base64)
+       └─ Returns: Uint8Array
+  └─ PDF.js renders Uint8Array into <canvas>
+       └─ pdfjsLib.getDocument({ data: pdfBytes })
+       └─ page.render({ canvasContext, viewport })
+```
+
+---
+
+## 5. Export Flow
+
+```
+User clicks export button (PDF / HTML / TEX)
+  └─ useExport().exportFile({ format, texFileId: id })
+       └─ fetch GET `/api/tex-files/${id}/export?format=pdf`
+       └─ Backend: export_tex_file(latex, format)
+            └─ pdflatex (PDF) or pandoc (HTML/DOCX/MD)
+            └─ Returns: StreamingResponse with file bytes
+       └─ Browser receives blob
+       └─ downloadBlob(blob, filename) → triggers download
+```
+
+---
+
+## 6. Rename Flow
+
+```
+User renames project
+  └─ useProjects().renameProject(id, newName)
+       └─ authFetch PUT `/api/tex/${id}` { filename: newName.tex }
+       └─ upsertProject() with updated name
+```
+
+---
+
+## 7. State Architecture
+
+```
+                  ┌──────────────────┐
+                  │   Clerk Auth     │
+                  │  (JWT session)   │
+                  └────────┬─────────┘
+                           │ getToken()
+                  ┌────────▼─────────┐
+                  │   authFetch()    │
+                  │  (lib/authFetch) │
+                  └────────┬─────────┘
+                           │ Bearer token
+              ┌────────────▼────────────┐
+              │    useProjects()         │
+              │  (composables/           │
+              │   useProjects.ts)        │
+              │                          │
+              │  projectsState (ref)     │
+              │  localStorage cache      │
+              └───────┬──────┬──────────┘
+                      │      │
+           ┌──────────▼┐  ┌──▼──────────┐
+           │ Dashboard  │  │   Editor    │
+           │ (list)     │  │ (detail)    │
+           └────────────┘  └─────────────┘
+```
+
+### Key Points
+
+1. **Single source of truth**: `projectsState` ref in `useProjects` is shared across views.
+2. **Dual storage**: localStorage for offline resilience + backend API for persistence.
+3. **Merge strategy**: Remote projects are upserted into local state; local-only entries preserved.
+4. **Auth scoping**: All API calls include Clerk JWT → backend filters by `user.id`.
+5. **Optimistic updates**: Local state updated immediately; API call happens in background.
+
+---
+
+## 8. CodeMirror Setup
+
+- **Language**: `@codemirror/legacy-modes/mode/stex` (LaTeX/TeX syntax).
+- **Extensions**: Autocomplete, search, key bindings (default + search).
+- **Theme**: Custom or default CodeMirror theme.
+- **Two-way binding**: `v-model` via `vue-codemirror` component.
+
+---
+
+## 9. PDF Preview
+
+- **Library**: `pdfjs-dist` 5.4.
+- **Worker**: Loaded from `/pdf.worker.mjs` (in `public/`).
+- **Rendering**: Full page rendered to `<canvas>` at device pixel ratio.
+- **Navigation**: Page controls for multi-page documents.
+- **Source**: Compile response `pdf_base64` → `Uint8Array` → `pdfjsLib.getDocument()`.

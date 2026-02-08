@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import LatexEditorPanel from '@/components/convert/LatexEditorPanel.vue'
 import { AUTH_SESSION_EXPIRED_MESSAGE, useProjects, type ProjectFileMeta } from '@/composables/useProjects'
+import { useExport } from '@/composables/useExport'
 
 const DEFAULT_LATEX = `\\documentclass{article}
 \\usepackage{amsmath}
@@ -36,6 +37,7 @@ const route = useRoute()
 const router = useRouter()
 const { isLoaded, isSignedIn, userId } = useAuth()
 const {
+  addConvertedProject,
   compileProjectPdf,
   ensureRemoteProjectsLoaded,
   fetchProjectFiles,
@@ -45,13 +47,15 @@ const {
   updateProjectLatex,
 } = useProjects(userId)
 
+const { exportFile, exporting: exportingFile } = useExport()
+
 const code = ref(DEFAULT_LATEX)
 const compiledCode = ref(DEFAULT_LATEX)
 const activeTab = ref<'preview' | 'source'>('source')
 const zoom = ref(100)
 const copied = ref(false)
 const currentProjectId = ref<string | null>(null)
-const currentProjectName = ref('tidalhack-paper')
+const currentProjectName = ref('Untitled project')
 const currentSourceFilename = ref<string | null>(null)
 const activeFilePath = ref<string | null>(null)
 const projectFilesMetadata = ref<ProjectFileMeta[] | null>(null)
@@ -66,6 +70,9 @@ const isHydrating = ref(false)
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 let saveStateTimer: ReturnType<typeof setTimeout> | null = null
 let shareTimer: ReturnType<typeof setTimeout> | null = null
+let hydrateRequestId = 0
+let compileRequestId = 0
+let saveRequestId = 0
 
 function setAuthError(message: string) {
   authErrorMessage.value = message
@@ -73,6 +80,45 @@ function setAuthError(message: string) {
 
 function clearAuthError() {
   authErrorMessage.value = ''
+}
+
+function autoFixLatexForCompile(input: string): { source: string; changed: boolean } {
+  let output = input
+  const apply = (next: string) => {
+    output = next
+  }
+
+  apply(output.replace(/\r\n/g, '\n'))
+  apply(output.replace(/\u00a0/g, ' '))
+  apply(output.replace(/\t/g, '  '))
+  apply(output.replace(/\\MATH/g, 'MATH'))
+  apply(output.replace(/\\dx/g, 'dx'))
+  apply(output.replace(/\\frac\{([^}]*)\}\[([^\]]*)\]\[([^\]]*)\]/g, '\\frac{$1}{$2}'))
+  apply(output.replace(/[“”]/g, '"'))
+  apply(output.replace(/[‘’]/g, "'"))
+
+  // Remove common OCR artifacts that break LaTeX compilation.
+  apply(output.replace(/[^\x09\x0a\x0d\x20-\x7e]/g, ''))
+
+  if (!/\\end\{document\}/.test(output) && /\\begin\{document\}/.test(output)) {
+    apply(`${output.trim()}\n\\end{document}`)
+  }
+
+  if (!/\\documentclass/.test(output)) {
+    const body = output.trim()
+    apply([
+      '\\documentclass[12pt]{article}',
+      '\\usepackage{amsmath,amssymb,amsfonts}',
+      '\\usepackage[utf8]{inputenc}',
+      '\\usepackage{geometry}',
+      '\\geometry{a4paper, margin=1in}',
+      '\\begin{document}',
+      body,
+      '\\end{document}',
+    ].join('\n'))
+  }
+
+  return { source: output, changed: output !== input }
 }
 
 function escapeHtml(value: string): string {
@@ -84,6 +130,18 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
+const KATEX_MACROS: Record<string, string> = {
+  '\\R': '\\mathbb{R}',
+  '\\N': '\\mathbb{N}',
+  '\\Z': '\\mathbb{Z}',
+  '\\Q': '\\mathbb{Q}',
+  '\\C': '\\mathbb{C}',
+  '\\dx': '\\,dx',
+  '\\dy': '\\,dy',
+  '\\dt': '\\,dt',
+  '\\ds': '\\,ds',
+}
+
 function safeMathRender(tex: string, displayMode = false): string {
   try {
     let cleanedTex = tex.trim()
@@ -91,6 +149,10 @@ function safeMathRender(tex: string, displayMode = false): string {
     cleanedTex = cleanedTex.replace(/\\begin\{scope\}/g, '')
     cleanedTex = cleanedTex.replace(/\\end\{scope\}/g, '')
     cleanedTex = cleanedTex.replace(/\\foreach/g, '%')
+    cleanedTex = cleanedTex.replace(/\\label\{[^}]*\}/g, '')
+    cleanedTex = cleanedTex.replace(/\\nonumber/g, '')
+    cleanedTex = cleanedTex.replace(/\\notag/g, '')
+    cleanedTex = cleanedTex.replace(/\\allowbreak/g, '')
 
     return katex.renderToString(cleanedTex, {
       displayMode,
@@ -99,6 +161,7 @@ function safeMathRender(tex: string, displayMode = false): string {
       output: 'htmlAndMathml',
       errorColor: '#000',
       trust: false,
+      macros: KATEX_MACROS,
     })
   } catch {
     const text = tex
@@ -151,8 +214,20 @@ function renderLatexPreview(latex: string): string {
   src = src.replace(/\$\$([\s\S]*?)\$\$/g, (_m, tex) => {
     return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
   })
-  src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, _env, tex) => {
-    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(tex, true)}</div>`)
+  src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?|multline\*?|split|flalign\*?|eqnarray\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, env, tex) => {
+    let wrapped = tex
+    if (env.startsWith('align') || env === 'split' || env.startsWith('flalign') || env.startsWith('eqnarray')) {
+      wrapped = `\\begin{aligned}${tex}\\end{aligned}`
+    } else if (env.startsWith('gather') || env.startsWith('multline')) {
+      wrapped = `\\begin{gathered}${tex}\\end{gathered}`
+    } else if (tex.includes('\\\\')) {
+      wrapped = `\\begin{gathered}${tex}\\end{gathered}`
+    }
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(wrapped, true)}</div>`)
+  })
+  src = src.replace(/\\begin\{(cases|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix)\}([\s\S]*?)\\end\{\1\}/g, (_m, env, tex) => {
+    const wrapped = `\\begin{${env}}${tex}\\end{${env}}`
+    return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${safeMathRender(wrapped, true)}</div>`)
   })
   src = src.replace(/\$([^$]+?)\$/g, (_m, tex) => {
     return insertSafeBlock(safeMathRender(tex, false))
@@ -175,10 +250,23 @@ function renderLatexPreview(latex: string): string {
     return insertSafeBlock(`<ol class="list-decimal my-4">${processedItems}</ol>`)
   })
 
+  src = src.replace(/\\begin\{center\}([\s\S]*?)\\end\{center\}/g, (_m, content) => {
+    return insertSafeBlock(`<div class="my-4 text-center">${content.trim()}</div>`)
+  })
+  src = src.replace(/\\begin\{quote\}([\s\S]*?)\\end\{quote\}/g, (_m, content) => {
+    return insertSafeBlock(`<blockquote class="my-4 border-l-4 border-border pl-4 italic text-muted-foreground">${content.trim()}</blockquote>`)
+  })
+
   src = src.replace(/\\textbf\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<strong>${escapeHtml(text)}</strong>`))
   src = src.replace(/\\textit\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
   src = src.replace(/\\emph\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
   src = src.replace(/\\texttt\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<code class="font-mono text-sm">${escapeHtml(text)}</code>`))
+  src = src.replace(/\\underline\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<span class="underline">${escapeHtml(text)}</span>`))
+
+  src = src.replace(/\\newpage/g, insertSafeBlock('<hr class="my-8 border-border" />'))
+  src = src.replace(/\\(vspace|hspace)\{[^}]*\}/g, '')
+  src = src.replace(/\\(hline|noindent|clearpage|pagebreak)/g, '')
+  src = src.replace(/\\\\(?!\[)/g, insertSafeBlock('<br />'))
 
   src = escapeHtml(src)
 
@@ -192,12 +280,16 @@ function renderLatexPreview(latex: string): string {
     })
     .join('')
 
-  src = src.replace(/@@SAFE_BLOCK_(\d+)@@/g, (_m, idx) => safeBlocks[Number(idx)] ?? '')
+  let previous = ''
+  while (src !== previous) {
+    previous = src
+    src = src.replace(/@@SAFE_BLOCK_(\d+)@@/g, (_m, idx) => safeBlocks[Number(idx)] ?? '')
+  }
 
   return src
 }
 
-const renderedPreview = computed(() => renderLatexPreview(compiledCode.value))
+const renderedPreview = computed(() => renderLatexPreview(code.value))
 
 const downloadFilename = computed(() => {
   const source = (currentSourceFilename.value || '').trim()
@@ -282,7 +374,11 @@ const shareLabel = computed(() => {
 })
 
 async function compilePreview() {
-  if (!currentProjectId.value) {
+  const requestId = ++compileRequestId
+  let projectId = currentProjectId.value
+  let sourceSnapshot = code.value
+
+  if (!projectId) {
     compileState.value = 'error'
     compileErrorMessage.value = 'No active project selected.'
     compiledPdfData.value = null
@@ -292,11 +388,92 @@ async function compilePreview() {
   compileState.value = 'compiling'
   compileErrorMessage.value = ''
 
-  const result = await compileProjectPdf(currentProjectId.value)
+  const fixed = autoFixLatexForCompile(sourceSnapshot)
+  if (fixed.changed) {
+    sourceSnapshot = fixed.source
+    code.value = fixed.source
+  }
+
+  if (projectId.startsWith('local-')) {
+    try {
+      const promoted = await addConvertedProject({
+        name: currentProjectName.value || 'Untitled project',
+        latex: code.value,
+        sourceFilename: currentSourceFilename.value || currentProjectName.value || 'main.tex',
+        sourceKind: 'unknown',
+        ownerId: userId.value ?? null,
+      })
+      if (requestId !== compileRequestId) {
+        return
+      }
+
+      if (promoted.id.startsWith('local-')) {
+        compiledPdfData.value = null
+        compileState.value = 'error'
+        compileErrorMessage.value = 'Could not save to cloud. Please sign in and try again.'
+        setAuthError('Cloud save unavailable — check your connection and sign-in status.')
+        setTimeout(() => { if (authErrorMessage.value.includes('Cloud save')) clearAuthError() }, 5000)
+        return
+      }
+
+      projectId = promoted.id
+      currentProjectId.value = promoted.id
+      currentProjectName.value = promoted.name
+      currentSourceFilename.value = promoted.sourceFilename ?? currentSourceFilename.value
+      if (routeProjectId.value !== promoted.id) {
+        void router.replace({
+          path: '/editor',
+          query: {
+            ...route.query,
+            projectId: promoted.id,
+          },
+        })
+      }
+    } catch {
+      if (requestId !== compileRequestId) {
+        return
+      }
+      compiledPdfData.value = null
+      compileState.value = 'error'
+      compileErrorMessage.value = 'Cloud save failed. PDF compile requires a remote project.'
+      setAuthError('Cloud save failed. Please try again.')
+      return
+    }
+  }
+
+  try {
+    const saved = await updateProjectLatex(projectId, sourceSnapshot)
+    if (requestId !== compileRequestId) {
+      return
+    }
+    if (!saved) {
+      compiledPdfData.value = null
+      compileState.value = 'error'
+      compileErrorMessage.value = 'Save failed. Fix save issue before compiling.'
+      return
+    }
+  } catch (error) {
+    if (requestId !== compileRequestId) {
+      return
+    }
+    if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
+    compiledPdfData.value = null
+    compileState.value = 'error'
+    compileErrorMessage.value = 'Save failed. Fix save issue before compiling.'
+    return
+  }
+
+  const result = await compileProjectPdf(projectId)
+  if (requestId !== compileRequestId || projectId !== currentProjectId.value) {
+    return
+  }
+
   if (result.ok) {
     clearAuthError()
     compiledPdfData.value = result.pdfData
-    compiledCode.value = code.value
+    compiledCode.value = sourceSnapshot
     compileState.value = 'compiled'
     return
   }
@@ -351,6 +528,12 @@ function handleUpdateEditorValue(nextValue: string) {
 }
 
 async function hydrateFromProject(projectId: string | null) {
+  const requestId = ++hydrateRequestId
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+
   const direct = projectId ? getProjectById(projectId) : undefined
   let fetched
   try {
@@ -362,6 +545,10 @@ async function hydrateFromProject(projectId: string | null) {
     }
     fetched = undefined
   }
+  if (requestId !== hydrateRequestId) {
+    return
+  }
+
   const fallback = !direct && !fetched ? projects.value[0] : undefined
   const project = direct ?? fetched ?? fallback
 
@@ -369,7 +556,7 @@ async function hydrateFromProject(projectId: string | null) {
 
   if (!project) {
     currentProjectId.value = null
-    currentProjectName.value = 'tidalhack-paper'
+    currentProjectName.value = 'Untitled project'
     currentSourceFilename.value = null
     activeFilePath.value = null
     projectFilesMetadata.value = null
@@ -393,8 +580,14 @@ async function hydrateFromProject(projectId: string | null) {
   saveState.value = 'idle'
   compiledPdfData.value = null
   await hydrateProjectFiles(project.id)
+  if (requestId !== hydrateRequestId) {
+    return
+  }
   isHydrating.value = false
   await compilePreview()
+  if (requestId !== hydrateRequestId) {
+    return
+  }
 
   if (!routeProjectId.value && project.id) {
     void router.replace({
@@ -408,6 +601,7 @@ async function hydrateFromProject(projectId: string | null) {
 }
 
 async function runSave(projectId: string, latex: string) {
+  const requestId = ++saveRequestId
   saveState.value = 'saving'
   let ok = false
   try {
@@ -418,6 +612,9 @@ async function runSave(projectId: string, latex: string) {
       setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
     }
     ok = false
+  }
+  if (requestId !== saveRequestId) {
+    return
   }
 
   if (projectId !== currentProjectId.value) {
@@ -459,19 +656,28 @@ function flushPendingSave() {
   }
 }
 
-watch(
-  () => [routeProjectId.value, projects.value.length] as const,
-  ([projectId]) => {
-    void hydrateFromProject(projectId)
-  },
-  { immediate: true },
-)
+const resolvedProjectId = computed(() => {
+  if (routeProjectId.value) return routeProjectId.value
+  const latestRemote = projects.value.find((project) => !project.id.startsWith('local-'))
+  return latestRemote?.id ?? projects.value[0]?.id ?? null
+})
+
+watch([resolvedProjectId, isLoaded, isSignedIn], ([projectId, loaded, signedIn]) => {
+  if (!loaded || !signedIn) return
+  void hydrateFromProject(projectId)
+}, { immediate: true })
 
 watch(code, (nextCode) => {
   if (!isHydrating.value && isActiveFileEditable.value) {
     compileState.value = 'dirty'
   }
   scheduleSave(nextCode)
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'preview' && compileState.value === 'dirty' && currentProjectId.value) {
+    void compilePreview()
+  }
 })
 
 watch(
@@ -489,7 +695,7 @@ watch(
         setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
         return
       }
-      setAuthError('Unable to load project data right now.')
+      clearAuthError()
     })
   },
   { immediate: true },
@@ -511,6 +717,32 @@ function handleDownload() {
   anchor.download = downloadFilename.value
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+async function handleDownloadFormat(format: 'tex' | 'html' | 'pdf') {
+  if (format === 'tex') {
+    handleDownload()
+    return
+  }
+
+  const projectId = currentProjectId.value
+  if (!projectId || projectId.startsWith('local-')) {
+    authErrorMessage.value = `${format.toUpperCase()} export requires a saved project. Save first by compiling.`
+    setTimeout(() => { if (authErrorMessage.value.includes('export requires')) authErrorMessage.value = '' }, 4000)
+    return
+  }
+
+  try {
+    await exportFile({
+      format,
+      texFileId: projectId,
+      latex: code.value,
+      filename: currentProjectName.value || 'monogram-output',
+    })
+  } catch {
+    authErrorMessage.value = `Export failed. Try recompiling first.`
+    setTimeout(() => { if (authErrorMessage.value.includes('Export failed')) authErrorMessage.value = '' }, 4000)
+  }
 }
 
 async function handleShare() {
@@ -559,12 +791,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background">
+  <main class="h-screen overflow-hidden bg-background">
     <AppNavbar />
 
-    <section class="h-screen px-3 pb-3 pt-20 md:px-5">
-      <p v-if="authErrorMessage" class="mx-auto mb-3 max-w-[1500px] text-sm text-destructive">{{ authErrorMessage }}</p>
-      <div class="mx-auto h-full max-w-[1500px] overflow-hidden rounded-2xl border border-border bg-card">
+    <section class="h-[calc(100vh-3.5rem)] px-0 md:h-screen">
+      <p v-if="authErrorMessage" class="mx-3 mt-2 text-sm text-destructive md:mx-5">{{ authErrorMessage }}</p>
+      <div class="h-full overflow-hidden bg-card">
         <LatexEditorPanel
           :model-value="visibleCode"
           :active-tab="activeTab"
@@ -588,6 +820,7 @@ onUnmounted(() => {
           @select-file="handleSelectFile"
           @copy="handleCopy"
           @download="handleDownload"
+          @download-format="handleDownloadFormat"
           @recompile="compilePreview"
           @share="handleShare"
         />

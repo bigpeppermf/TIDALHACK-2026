@@ -271,6 +271,26 @@ def download_tex_file(
     )
 
 
+@router.delete("/api/tex/{tex_id}")
+def delete_tex_file_route(
+    tex_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    tex_file = crud.get_tex_file_by_id(
+        db=db,
+        user_id=user.id,
+        tex_id=tex_id
+    )
+
+    if tex_file is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    crud.delete_tex_file(db=db, tex_file=tex_file)
+
+    return {"success": True, "id": str(tex_id)}
+
+
 @router.get("/api/tex/{tex_id}/files")
 def list_project_files(
     tex_id: str,

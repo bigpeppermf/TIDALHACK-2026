@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { Codemirror } from 'vue-codemirror'
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
@@ -46,9 +46,17 @@ const emit = defineEmits<{
   'select-file': [path: string]
   copy: []
   download: []
+  'download-format': [format: 'tex' | 'html' | 'pdf']
   recompile: []
   share: []
 }>()
+
+const showDownloadMenu = ref(false)
+const downloadFormats = [
+  { value: 'tex' as const, label: '.tex' },
+  { value: 'html' as const, label: '.html' },
+  { value: 'pdf' as const, label: '.pdf' },
+]
 
 const codeEditorView = shallowRef<EditorView | null>(null)
 const cursorLine = ref(1)
@@ -70,6 +78,14 @@ const wordCount = computed(() => {
 })
 
 const hasRealFiles = computed(() => Array.isArray(props.files) && props.files.length > 0)
+const projectTitle = computed(() => {
+  const value = props.projectName?.trim()
+  return value || 'Untitled project'
+})
+const sourceTitle = computed(() => {
+  const value = props.sourceFilename?.trim()
+  return value || 'No source file'
+})
 
 const hasCompiledPdf = computed(() => Boolean(pdfDoc.value && totalPages.value > 0))
 
@@ -111,9 +127,20 @@ const editorExtensions = computed(() => [
   rectangularSelection(),
   crosshairCursor(),
   highlightActiveLine(),
+  EditorView.lineWrapping,
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
   StreamLanguage.define(stex),
   keymap.of([
+    {
+      key: 'Ctrl-Enter',
+      mac: 'Cmd-Enter',
+      run: () => { emit('recompile'); return true },
+    },
+    {
+      key: 'Ctrl-s',
+      mac: 'Cmd-s',
+      run: () => { emit('recompile'); return true },
+    },
     indentWithTab,
     ...closeBracketsKeymap,
     ...defaultKeymap,
@@ -147,6 +174,25 @@ function handleEditorUpdate(update: { view: EditorView; selectionSet: boolean })
     syncCursorFromView(update.view)
   }
 }
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault()
+    emit('recompile')
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    emit('recompile')
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
+})
 
 function updateZoom(event: Event) {
   const target = event.target as HTMLInputElement
@@ -192,6 +238,12 @@ async function renderPage(pageNum: number) {
 
     await renderTask.value.promise
     currentPage.value = pageNum
+    pdfViewerError.value = ''
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.toLowerCase().includes('cancel')) {
+      pdfViewerError.value = `Unable to render compiled PDF: ${message}`
+    }
   } finally {
     renderTask.value = null
     pageRendering.value = false
@@ -285,9 +337,7 @@ watch(
 watch(
   () => props.pdfError,
   (nextError) => {
-    if (nextError) {
-      pdfViewerError.value = nextError
-    }
+    pdfViewerError.value = nextError || ''
   },
 )
 
@@ -303,22 +353,17 @@ onBeforeUnmount(() => {
         <span class="rounded-md border border-border bg-secondary px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
           Project
         </span>
-        <span class="truncate text-sm font-semibold text-foreground">{{ props.projectName || 'tidalhack-paper' }}</span>
-        <nav class="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
-          <button type="button" class="hover:text-foreground">File</button>
-          <button type="button" class="hover:text-foreground">Edit</button>
-          <button type="button" class="hover:text-foreground">View</button>
-          <button type="button" class="hover:text-foreground">Project</button>
-          <button type="button" class="hover:text-foreground">Tools</button>
-        </nav>
+        <span class="truncate text-sm font-semibold text-foreground">{{ projectTitle }}</span>
       </div>
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="rounded-md border border-border bg-secondary px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[hsl(var(--muted)/0.7)]"
+          class="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[hsl(var(--muted)/0.7)]"
           :disabled="props.compileStatus === 'compiling'"
+          title="Ctrl+Enter or Ctrl+S"
           @click="emit('recompile')"
         >
+          <div v-if="props.compileStatus === 'compiling'" class="h-3 w-3 animate-spin rounded-full border border-foreground border-t-transparent" />
           {{ props.compileStatus === 'compiling' ? 'Compiling...' : 'Recompile' }}
         </button>
         <button
@@ -332,11 +377,11 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="flex min-h-0 flex-1 overflow-hidden">
-      <aside class="hidden w-60 flex-col border-r border-border bg-[hsl(var(--muted)/0.3)] md:flex">
+      <aside v-if="hasRealFiles" class="hidden w-60 flex-col border-r border-border bg-[hsl(var(--muted)/0.3)] md:flex">
         <div class="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Files
         </div>
-        <div v-if="hasRealFiles" class="space-y-1 p-2 text-sm">
+        <div class="space-y-1 p-2 text-sm">
           <button
             v-for="file in props.files"
             :key="file.path"
@@ -352,38 +397,15 @@ onBeforeUnmount(() => {
             <span class="text-[11px] uppercase">{{ file.kind }}</span>
           </button>
         </div>
-        <div v-else class="space-y-1 p-2 text-sm">
-          <button class="flex w-full items-center gap-2 rounded-md bg-secondary px-2 py-1.5 text-left text-foreground">
-            <span class="text-xs text-primary">●</span>
-            <span class="flex-1">main.tex</span>
-            <span class="text-[11px] text-muted-foreground">tex</span>
-          </button>
-          <button class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-secondary/70">
-            <span class="text-xs">▸</span>
-            <span class="flex-1">sections/</span>
-            <span class="text-[11px]">dir</span>
-          </button>
-          <button class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-secondary/70">
-            <span class="text-xs">•</span>
-            <span class="flex-1">references.bib</span>
-            <span class="text-[11px]">bib</span>
-          </button>
-          <button class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-secondary/70">
-            <span class="text-xs">▸</span>
-            <span class="flex-1">figures/</span>
-            <span class="text-[11px]">dir</span>
-          </button>
-        </div>
       </aside>
 
       <div class="flex min-w-0 flex-1 overflow-hidden">
-        <section class="flex min-w-0 flex-1 flex-col border-r border-border">
+        <section class="flex min-w-0 flex-1 flex-col" :class="hasRealFiles ? 'border-r border-border' : ''">
           <div class="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
             <div class="flex items-center gap-2">
               <span class="rounded border border-border bg-[hsl(var(--background)/0.8)] px-2 py-0.5 text-foreground">
-                {{ props.sourceFilename || 'main.tex' }}
+                {{ sourceTitle }}
               </span>
-              <span>UTF-8</span>
               <span v-if="props.readOnly" class="rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Read only</span>
               <span :class="saveIndicatorClass">{{ props.saveStatusLabel || 'Auto Save' }}</span>
             </div>
@@ -438,7 +460,7 @@ onBeforeUnmount(() => {
         >
           <div class="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
             <div class="flex items-center gap-2">
-              <span>PDF Preview</span>
+              <span>{{ hasCompiledPdf ? 'PDF Preview' : 'Live Preview' }}</span>
               <span class="rounded px-2 py-0.5" :class="compileBadgeClass">{{ props.compileStatusLabel || 'Ready' }}</span>
             </div>
             <div class="flex items-center gap-2">
@@ -456,8 +478,14 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="h-[calc(100%-37px)] overflow-auto p-4">
-            <div v-if="pdfLoading" class="mx-auto flex min-h-[12rem] max-w-3xl items-center justify-center rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
-              Rendering PDF...
+            <div v-if="props.compileStatus === 'compiling'" class="mx-auto flex min-h-[12rem] max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
+              <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span>Compiling PDF...</span>
+            </div>
+
+            <div v-else-if="pdfLoading" class="mx-auto flex min-h-[12rem] max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
+              <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span>Rendering PDF...</span>
             </div>
 
             <div v-else-if="hasCompiledPdf" class="mx-auto max-w-3xl space-y-3">
@@ -490,23 +518,30 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div v-else class="space-y-3">
+            <div v-else class="mx-auto max-w-3xl space-y-3">
               <div
                 v-if="pdfViewerError"
-                class="mx-auto max-w-3xl rounded-sm border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                class="rounded-sm border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
               >
                 {{ pdfViewerError }}
               </div>
-
+              <div v-if="props.renderedPreview" class="rounded-sm border border-black/5 bg-white p-6 shadow-lg">
+                <div
+                  class="latex-document-preview mx-auto max-w-none origin-top text-black"
+                  :style="{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'top center',
+                    width: `${100 / (zoom / 100)}%`,
+                  }"
+                  v-html="props.renderedPreview"
+                />
+              </div>
               <div
-                class="latex-document-preview mx-auto min-h-full max-w-3xl rounded-sm border border-black/5 shadow-2xl"
-                :style="{
-                  transform: `scale(${zoom / 100})`,
-                  transformOrigin: 'top center',
-                  width: `${100 / (zoom / 100)}%`,
-                }"
-                v-html="renderedPreview"
-              />
+                v-else-if="!pdfViewerError"
+                class="rounded-sm border border-border bg-[hsl(var(--card)/0.9)] px-4 py-3 text-sm text-muted-foreground"
+              >
+                Run <span class="font-medium text-foreground">Recompile</span> to generate the compiled PDF.
+              </div>
             </div>
           </div>
         </section>
@@ -519,7 +554,7 @@ onBeforeUnmount(() => {
         <span>{{ wordCount }} words</span>
         <span>{{ modelValue.length }} chars</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="relative flex items-center gap-2">
         <button
           type="button"
           class="rounded-md border border-border px-3 py-1 text-foreground transition-colors hover:bg-secondary"
@@ -527,13 +562,35 @@ onBeforeUnmount(() => {
         >
           {{ copied ? 'Copied' : 'Copy' }}
         </button>
-        <button
-          type="button"
-          class="rounded-md border border-border px-3 py-1 text-foreground transition-colors hover:bg-secondary"
-          @click="emit('download')"
-        >
-          Download .tex
-        </button>
+        <div class="relative">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-foreground transition-colors hover:bg-secondary"
+            @click="showDownloadMenu = !showDownloadMenu"
+          >
+            <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            Download
+            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          <div
+            v-if="showDownloadMenu"
+            class="absolute bottom-full right-0 mb-1 w-36 rounded-md border border-border bg-card py-1 shadow-lg"
+          >
+            <button
+              v-for="fmt in downloadFormats"
+              :key="fmt.value"
+              type="button"
+              class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary"
+              @click="emit('download-format', fmt.value); showDownloadMenu = false"
+            >
+              {{ fmt.label }}
+            </button>
+          </div>
+        </div>
       </div>
     </footer>
   </div>

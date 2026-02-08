@@ -1,4 +1,6 @@
-import { ref } from 'vue'
+import { useAuth } from '@clerk/vue'
+import { ref, toValue } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
 
 export type ExportFormat = 'pdf' | 'html' | 'tex'
 
@@ -12,6 +14,27 @@ interface ExportInput {
 export function useExport() {
   const exporting = ref(false)
   const error = ref<string | null>(null)
+
+  let authRef: ReturnType<typeof useAuth> | null = null
+  try {
+    authRef = useAuth()
+  } catch {
+    authRef = null
+  }
+
+  async function buildHeaders(extra?: HeadersInit): Promise<Headers> {
+    const headers = new Headers(extra)
+    if (authRef) {
+      const getToken = toValue(authRef.getToken as unknown as MaybeRefOrGetter<(() => Promise<string | null>) | undefined>)
+      if (getToken) {
+        const token = await getToken()
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`)
+        }
+      }
+    }
+    return headers
+  }
 
   function extensionForFormat(format: ExportFormat): string {
     if (format === 'pdf') return 'pdf'
@@ -64,13 +87,16 @@ export function useExport() {
       let res: Response
 
       if (texFileId) {
+        const headers = await buildHeaders()
         res = await fetch(`/api/tex-files/${encodeURIComponent(texFileId)}/export?format=${encodeURIComponent(format)}`, {
           method: 'GET',
+          headers,
         })
       } else if (format === 'tex' && latex) {
+        const headers = await buildHeaders({ 'Content-Type': 'application/json' })
         res = await fetch('/api/export', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ latex, filename: (filename || 'notes').trim() || 'notes' }),
         })
       } else {

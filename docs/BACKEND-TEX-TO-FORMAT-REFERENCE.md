@@ -1,102 +1,139 @@
-# Backend Reference – LaTeX Export Formats
+# Backend TeX-to-Format Export – Reference
 
-## Supported Formats
-
-| Format | Description | Tooling |
-|------|------------|--------|
-| TEX  | Raw LaTeX source | None |
-| PDF  | Compiled document | pdflatex |
-| HTML | Web-renderable output (semantic HTML + MathML) | pandoc |
+> Canonical reference for the TeX export pipeline.
 
 ---
 
-## API Endpoint
+## 1. Overview
 
-`GET /api/tex-files/{id}/export?format=pdf|html|tex`
-
-- Auth required (Clerk session JWT)
-- Ownership enforced by `user_id`
-- Responds with a file download and `Content-Disposition`
+The export system converts LaTeX source into downloadable files in four formats: **PDF**, **HTML**, **DOCX**, and **Markdown**. PDF is produced via `pdflatex`; the other three via `pandoc`.
 
 ---
 
-## Recommended Tooling
+## 2. Core Types
 
-### PDF
-- `pdflatex`
-- Run with flags:
-  - `-interaction=nonstopmode`
-  - `-halt-on-error`
-- Expected output file: `input.pdf`
+### ExportFormat (services/tex_export.py)
 
-### HTML (Accessible, MathML-first)
-- `pandoc`
-  - Input: `input.tex`
-  - Output: `output.html`
-  - Use explicit format args: `-f latex -t html --mathml -s`
-  - Math is represented using native MathML (no images)
-  - Output is WCAG 2.1 AA aligned and usable without JavaScript
-  - Screen readers: VoiceOver / NVDA / JAWS
-- Expected output file: `output.html`
-
----
-
-## Temp File Strategy
-- Create a unique temp directory per request
-- Write source to `input.tex`
-- Generate output in the same directory
-- Remove the directory after the response is sent (always in cleanup)
-
----
-
-## Execution Flow
-
-1. LaTeX source is already available in memory for the request
-2. Validate requested format
-3. Write `input.tex` into a new temp directory
-4. Produce output based on format (`input.pdf` or `output.html`), or return raw source for `tex`
-5. Cleanup temp directory
-
----
-
-## HTTP Headers
-
-### PDF
 ```
-Content-Type: application/pdf
-Content-Disposition: attachment; filename="document.pdf"
+Literal["pdf", "html", "docx", "md"]
 ```
 
-### HTML
-```
-Content-Type: text/html
-Content-Disposition: attachment; filename="document.html"
-```
-Notes:
-- Output includes semantic HTML structure and embedded MathML.
-- Math is accessible to VoiceOver/NVDA/JAWS (MathML support).
+### ExportResult (services/tex_export.py)
 
-### TEX
+| Field | Type | Description |
+|---|---|---|
+| content | bytes | Exported file content |
+| media_type | str | MIME type (e.g. `application/pdf`) |
+| filename | str | Suggested download filename |
+
+---
+
+## 3. Service Layer — `export_tex_file()`
+
+**Location**: `src/backend/app/services/tex_export.py`
+
+**Signature**: `async def export_tex_file(latex_content: str, fmt: ExportFormat) -> ExportResult`
+
+### Flow
+
+1. Creates a temporary directory via `tempfile.mkdtemp()`.
+2. Writes `latex_content` to `input.tex` inside the temp dir.
+3. Based on `fmt`:
+   - **pdf**: Runs `pdflatex -interaction=nonstopmode -output-directory=<tmp> input.tex` twice. Reads `input.pdf`.
+   - **html**: Runs `pandoc input.tex --from latex --to html --standalone --mathjax -o output.html`. Reads `output.html`.
+   - **docx**: Runs `pandoc input.tex --from latex --to docx -o output.docx`. Reads `output.docx`.
+   - **md**: Runs `pandoc input.tex --from latex --to markdown -o output.md`. Reads `output.md`.
+4. Returns `ExportResult(content, media_type, filename)`.
+5. Cleans up temp directory in `finally` block via `shutil.rmtree`.
+
+### MIME Types
+
+| Format | MIME Type | Extension |
+|---|---|---|
+| pdf | `application/pdf` | `.pdf` |
+| html | `text/html` | `.html` |
+| docx | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | `.docx` |
+| md | `text/markdown` | `.md` |
+
+### Error Handling
+
+- `FileNotFoundError` → HTTP 500 with message about missing `pdflatex` or `pandoc`.
+- `subprocess.CalledProcessError` → HTTP 500 with stderr / log output.
+- Unknown format → `ValueError` (caught by route as 400).
+
+---
+
+## 4. Route — `POST /api/tex-export`
+
+**Location**: `src/backend/app/routes/tex_export.py`
+
+### Request
+
+```json
+{
+  "latex": "\\documentclass{article}\\begin{document}Hello\\end{document}",
+  "format": "pdf"
+}
 ```
-Content-Type: application/x-tex
-Content-Disposition: attachment; filename="document.tex"
+
+- `latex` (str, required): LaTeX source code.
+- `format` (str, required): One of `pdf`, `html`, `docx`, `md`.
+
+### Response
+
+- **200**: Streaming file download.
+  - `Content-Type`: Appropriate MIME type.
+  - `Content-Disposition`: `attachment; filename="export.<ext>"`.
+- **400**: Invalid format.
+- **500**: Compilation or tool error.
+
+### Implementation
+
+```python
+@router.post("/tex-export")
+async def export_tex(request: ExportRequest):
+    result = await export_tex_file(request.latex, request.format)
+    return StreamingResponse(
+        io.BytesIO(result.content),
+        media_type=result.media_type,
+        headers={"Content-Disposition": f'attachment; filename="{result.filename}"'}
+    )
 ```
 
 ---
 
-## Failure Modes & Responses
+## 5. Frontend Integration
 
-| Case | HTTP | Notes |
-|----|----|----|
-| Invalid or missing format | 400 | Reject early with allowed values |
-| File not found | 404 | Unknown id |
-| Unauthorized | 403 | Ownership enforced |
-| Compile error | 422 | Include stderr excerpt |
-| Tool missing | 500 | Log and return actionable error |
+### useExport Composable (frontend/src/composables/useExport.ts)
+
+- `exportDocument(latex, format)`: Sends POST to `/api/tex-export`, receives blob, triggers browser download.
+- Uses `authFetch` (which attaches the Clerk session token).
+- Called from the Editor page export buttons.
+
+### Export UI
+
+- Editor page toolbar offers PDF / HTML / DOCX / Markdown export buttons.
+- Triggers `useExport.exportDocument()` with the current CodeMirror content.
 
 ---
 
-## Non-Goals
-- No presentation-layer rendering
-- No client-side format conversion
-- No persistent storage of generated outputs
+## 6. Prerequisites
+
+| Tool | Purpose | Install |
+|---|---|---|
+| `pdflatex` | PDF compilation | `apt install texlive-latex-base texlive-latex-extra` |
+| `pandoc` | HTML / DOCX / MD conversion | `apt install pandoc` |
+
+Both must be on `$PATH` for the export service to work.
+
+---
+
+## 7. Implementation Map
+
+| Concern | File |
+|---|---|
+| Export service | `src/backend/app/services/tex_export.py` |
+| Export route | `src/backend/app/routes/tex_export.py` |
+| Frontend composable | `frontend/src/composables/useExport.ts` |
+| Tests | `tests/latex_to_format/test_tex_export_route.py` |
+| Tests (HTML) | `tests/latex_to_format/test_tex_export_html.py` |

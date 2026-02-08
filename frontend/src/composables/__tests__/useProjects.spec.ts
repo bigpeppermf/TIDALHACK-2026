@@ -82,4 +82,34 @@ describe('useProjects', () => {
     expect(projects.value).toHaveLength(2)
     expect(projects.value.every((project) => project.ownerId === 'user-a')).toBe(true)
   })
+
+  it('orders scoped projects by most recent updatedAtIso first', async () => {
+    seedProjects([
+      {
+        id: 'older',
+        name: 'Older',
+        updatedAt: 'older',
+        updatedAtIso: '2026-02-08T00:00:00.000Z',
+        status: 'converted',
+        latex: 'old',
+        ownerId: 'user-a',
+      },
+      {
+        id: 'newer',
+        name: 'Newer',
+        updatedAt: 'newer',
+        updatedAtIso: '2026-02-08T01:00:00.000Z',
+        status: 'converted',
+        latex: 'new',
+        ownerId: 'user-a',
+      },
+    ])
+
+    const { useProjects } = await import('../useProjects')
+    const { projects } = useProjects()
+
+    expect(projects.value).toHaveLength(2)
+    expect(projects.value[0]?.id).toBe('newer')
+    expect(projects.value[1]?.id).toBe('older')
+  })
 })

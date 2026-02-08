@@ -164,6 +164,24 @@ function isAuthStatus(status: number): boolean {
   return status === 401 || status === 403
 }
 
+function extractCompileErrorMessage(detail?: string, fallback?: string, status?: number): string {
+  const raw = (detail || fallback || '').trim()
+  if (!raw) {
+    return status ? `Compile failed (HTTP ${status})` : 'Compile failed'
+  }
+
+  const firstBang = raw.match(/!\s+([^\n\r]+)/)
+  const lineMatch = raw.match(/\bl\.(\d+)\b/)
+  if (firstBang) {
+    const core = firstBang[1]?.trim() || 'LaTeX error'
+    return lineMatch ? `${core} (line ${lineMatch[1]})` : core
+  }
+
+  const cleanedFirstLine = raw.split(/\r?\n/).find((line) => line.trim())?.trim() || raw
+  const normalized = cleanedFirstLine.replace(/^LaTeX Error:\s*/i, '').trim()
+  return lineMatch ? `${normalized} (line ${lineMatch[1]})` : normalized
+}
+
 export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined>) {
   const clerkGetToken = ref<(() => Promise<string | null>) | null>(null)
   const clerkUserId = ref<string | null>(null)
@@ -195,7 +213,15 @@ export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined
 
   const projects = computed(() => {
     if (!resolvedOwnerId.value) return []
-    return projectsState.value.filter((project) => project.ownerId === resolvedOwnerId.value)
+    return projectsState.value
+      .filter((project) => project.ownerId === resolvedOwnerId.value)
+      .sort((a, b) => {
+        const aTs = Date.parse(a.updatedAtIso)
+        const bTs = Date.parse(b.updatedAtIso)
+        const safeATs = Number.isNaN(aTs) ? 0 : aTs
+        const safeBTs = Number.isNaN(bTs) ? 0 : bTs
+        return safeBTs - safeATs
+      })
   })
 
   async function authFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -374,6 +400,34 @@ export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined
     }
   }
 
+  async function deleteProject(id: string): Promise<boolean> {
+    if (id.startsWith('local-')) {
+      projectsState.value = projectsState.value.filter((p) => p.id !== id)
+      persistProjects()
+      return true
+    }
+
+    try {
+      const response = await authFetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (isAuthStatus(response.status)) {
+        throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
+      }
+      if (!response.ok) {
+        return false
+      }
+      projectsState.value = projectsState.value.filter((p) => p.id !== id)
+      persistProjects()
+      return true
+    } catch (error) {
+      if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+        throw error
+      }
+      return false
+    }
+  }
+
   async function fetchProjectFiles(id: string): Promise<ProjectFileMeta[] | null> {
     if (id.startsWith('local-')) {
       return null
@@ -414,10 +468,15 @@ export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined
     if (isAuthStatus(response.status)) {
       return { ok: false, error: AUTH_SESSION_EXPIRED_MESSAGE }
     }
-    const payload = (await response.json()) as CompileResponse
+    let payload: CompileResponse | null = null
+    try {
+      payload = (await response.json()) as CompileResponse
+    } catch {
+      payload = null
+    }
 
-    if (!response.ok || !payload.success || !payload.pdf_base64) {
-      const message = payload.detail || payload.error || 'Compile failed'
+    if (!response.ok || !payload?.success || !payload?.pdf_base64) {
+      const message = extractCompileErrorMessage(payload?.detail, payload?.error, response.status)
       return { ok: false, error: message }
     }
 
@@ -431,6 +490,7 @@ export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined
     projects,
     addConvertedProject,
     compileProjectPdf,
+    deleteProject,
     ensureRemoteProjectsLoaded,
     fetchProjectFiles,
     fetchProjectById,

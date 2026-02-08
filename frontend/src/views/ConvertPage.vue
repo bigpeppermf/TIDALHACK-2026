@@ -23,6 +23,8 @@ const isPdf = ref(false)
 const latexOutput = ref('')
 const uploadedFile = ref<File | null>(null)
 const latestProjectId = ref<string | null>(null)
+const remoteSaveWarning = ref('')
+const remoteSaveBusy = ref(false)
 
 const allStages: ('upload' | 'loading' | 'result')[] = ['upload', 'loading', 'result']
 
@@ -52,6 +54,9 @@ async function handleFileAccepted(file: File) {
       ownerId: userId.value ?? null,
     })
     latestProjectId.value = project.id
+    remoteSaveWarning.value = project.id.startsWith('local-')
+      ? 'Cloud save failed. Retry save to enable PDF compile in editor.'
+      : ''
     stage.value = 'result'
   } catch (error) {
     if (error instanceof Error) {
@@ -68,13 +73,60 @@ function handleReset() {
   latexOutput.value = ''
   uploadedFile.value = null
   latestProjectId.value = null
+  remoteSaveWarning.value = ''
   stageError.value = null
   resetConvert()
 }
 
-function openEditorForLatest() {
-  if (!latestProjectId.value) return
-  router.push({ path: '/editor', query: { projectId: latestProjectId.value } })
+function canRetryRemoteSave(): boolean {
+  return Boolean(
+    uploadedFile.value
+    && latexOutput.value
+    && latestProjectId.value
+    && latestProjectId.value.startsWith('local-'),
+  )
+}
+
+async function retryRemoteSave(): Promise<boolean> {
+  if (!canRetryRemoteSave() || !uploadedFile.value) {
+    return false
+  }
+
+  remoteSaveBusy.value = true
+  try {
+    const project = await addConvertedProject({
+      name: uploadedFile.value.name,
+      latex: latexOutput.value,
+      sourceFilename: uploadedFile.value.name,
+      sourceKind: isPdf.value ? 'pdf' : 'image',
+      ownerId: userId.value ?? null,
+    })
+    latestProjectId.value = project.id
+    remoteSaveWarning.value = project.id.startsWith('local-')
+      ? 'Cloud save is still unavailable. PDF compile remains disabled until save succeeds.'
+      : ''
+    return !project.id.startsWith('local-')
+  } catch {
+    remoteSaveWarning.value = 'Cloud save retry failed. Please try again.'
+    return false
+  } finally {
+    remoteSaveBusy.value = false
+  }
+}
+
+async function openEditorForLatest() {
+  if (latestProjectId.value?.startsWith('local-')) {
+    const saved = await retryRemoteSave()
+    if (!saved) {
+      return
+    }
+  }
+
+  if (latestProjectId.value) {
+    router.push({ path: '/editor', query: { projectId: latestProjectId.value } })
+    return
+  }
+  router.push('/editor')
 }
 
 function stageIndex(s: string): number {
@@ -171,12 +223,23 @@ onUnmounted(() => {
 
       <!-- Result -->
       <div v-if="stage === 'result'" class="mb-3 w-full max-w-[1600px] px-4 text-right">
+        <p v-if="remoteSaveWarning" class="mb-2 text-left text-sm text-destructive">{{ remoteSaveWarning }}</p>
         <button
           type="button"
           class="inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+          :disabled="remoteSaveBusy"
           @click="openEditorForLatest"
         >
-          Open In Editor
+          {{ remoteSaveBusy ? 'Saving...' : 'Open In Editor' }}
+        </button>
+        <button
+          v-if="canRetryRemoteSave()"
+          type="button"
+          class="ml-2 inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          :disabled="remoteSaveBusy"
+          @click="retryRemoteSave"
+        >
+          {{ remoteSaveBusy ? 'Retrying...' : 'Retry Cloud Save' }}
         </button>
       </div>
       <ResultView

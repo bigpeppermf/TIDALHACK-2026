@@ -34,9 +34,8 @@ def _auth_env_ready() -> None:
 def _startup():
     _auth_env_ready()
     # Auto-create database tables if they don't exist
-    if engine is not None:
-        import app.db.models  # noqa: F401 — ensure models are registered
-        Base.metadata.create_all(bind=engine)
+    import app.db.models  # noqa: F401 — ensure models are registered
+    Base.metadata.create_all(bind=engine)
 
 
 # CORS

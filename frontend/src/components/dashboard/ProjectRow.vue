@@ -73,7 +73,8 @@ const statusConfig = computed(() => {
 
 <template>
   <div
-    class="group flex items-center gap-4 rounded-xl border border-transparent bg-card p-4 transition-all hover:border-border hover:bg-secondary hover:shadow-lg"
+    class="group flex items-center gap-4 rounded-lg border border-transparent p-4 transition-all duration-300 hover:border-[hsl(var(--border)/0.4)] hover:shadow-lg"
+    style="background: hsl(var(--card) / 0.4)"
   >
     <!-- Thumbnail -->
     <div class="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background">

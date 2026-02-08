@@ -146,26 +146,27 @@ onUnmounted(() => {
     <div class="fixed inset-0 bg-grid-pattern opacity-30" />
 
     <!-- Step indicator bar -->
-    <div class="relative z-10 border-b border-border/50 bg-[hsl(var(--background)/0.8)] backdrop-blur-xl">
-      <div class="mx-auto flex max-w-7xl items-center justify-center gap-2 px-6 py-3">
+    <div class="relative z-10 border-b border-border/50 bg-[hsl(var(--background)/0.8)] pt-14 md:pt-0 backdrop-blur-xl">
+      <div class="mx-auto flex max-w-7xl items-center justify-center gap-2 px-6 py-3 md:pr-28">
         <template v-for="(s, i) in allStages" :key="s">
           <div class="flex items-center gap-2">
             <div
               :class="[
-                'flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-all',
+                'flex h-6 w-6 items-center justify-center rounded-sm text-[10px] font-semibold transition-all duration-300',
                 stage === s
                   ? 'bg-primary text-primary-foreground'
                   : stageIndex(stage) > i
                     ? 'bg-primary/20 text-primary'
-                    : 'bg-secondary text-muted-foreground',
+                    : 'text-muted-foreground/50',
               ]"
+              :style="stage !== s && stageIndex(stage) <= i ? 'border: 1px solid hsl(var(--border) / 0.4)' : ''"
             >
               {{ i + 1 }}
             </div>
             <span
               :class="[
-                'text-xs font-medium transition-colors',
-                stage === s ? 'text-foreground' : 'text-muted-foreground',
+                'text-[10px] font-semibold tracking-[0.1em] uppercase transition-colors duration-300',
+                stage === s ? 'text-foreground' : 'text-muted-foreground/50',
               ]"
             >
               {{ s === 'upload' ? 'Upload' : s === 'loading' ? 'Processing' : 'Result' }}
@@ -174,8 +175,8 @@ onUnmounted(() => {
           <div
             v-if="i < 2"
             :class="[
-              'h-px w-8 transition-colors',
-              stageIndex(stage) > i ? 'bg-[hsl(var(--primary)/0.4)]' : 'bg-[hsl(var(--border))]',
+              'h-px w-10 transition-colors duration-300',
+              stageIndex(stage) > i ? 'bg-[hsl(var(--primary)/0.4)]' : 'bg-[hsl(var(--border)/0.3)]',
             ]"
           />
         </template>
@@ -184,14 +185,19 @@ onUnmounted(() => {
 
     <!-- Content area -->
     <div :class="[
-      'relative z-10 flex flex-col items-center pt-4',
+      'relative z-10 flex flex-col items-center pt-4 md:pr-24',
       stage === 'result' ? 'min-h-[calc(100vh-56px)]' : 'min-h-[calc(100vh-110px)] justify-center px-6 py-12'
     ]">
       <!-- Upload -->
       <div v-if="stage === 'upload'" class="w-full max-w-2xl">
-        <div class="mb-8 text-center">
-          <h1 class="mb-2 text-3xl font-bold text-foreground">Convert Your Notes</h1>
-          <p class="text-muted-foreground">
+        <div class="mb-10 text-center">
+          <div class="mb-4 flex items-center justify-center gap-3">
+            <div class="h-px w-8 bg-primary" />
+            <span class="text-[11px] font-semibold tracking-[0.3em] uppercase text-primary">Upload</span>
+            <div class="h-px w-8 bg-primary" />
+          </div>
+          <h1 class="mb-3 text-3xl font-bold text-foreground">Convert Your Notes</h1>
+          <p class="text-[13px] tracking-wide text-muted-foreground/70">
             Upload a photo of your handwritten notes to get started.
           </p>
         </div>
@@ -205,16 +211,16 @@ onUnmounted(() => {
 
       <!-- Error -->
       <div v-if="stage === 'error'" class="w-full max-w-md text-center">
-        <div class="mb-6 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+        <div class="mb-6 flex h-14 w-14 mx-auto items-center justify-center rounded-xl bg-destructive/10 text-destructive">
           <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
           </svg>
         </div>
-        <h2 class="mb-2 text-xl font-semibold text-foreground">Conversion Failed</h2>
-        <p class="mb-6 text-sm text-muted-foreground">{{ stageError || convertError || 'Something went wrong. Please try again.' }}</p>
+        <h2 class="mb-2 text-lg font-semibold text-foreground">Conversion Failed</h2>
+        <p class="mb-8 text-[13px] tracking-wide text-muted-foreground/70">{{ stageError || convertError || 'Something went wrong. Please try again.' }}</p>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"
+          class="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
           @click="handleReset"
         >
           Try Again
@@ -223,10 +229,11 @@ onUnmounted(() => {
 
       <!-- Result -->
       <div v-if="stage === 'result'" class="mb-3 w-full max-w-[1600px] px-4 text-right">
-        <p v-if="remoteSaveWarning" class="mb-2 text-left text-sm text-destructive">{{ remoteSaveWarning }}</p>
+        <p v-if="remoteSaveWarning" class="mb-3 rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-left text-[12px] text-destructive">{{ remoteSaveWarning }}</p>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+          class="inline-flex items-center gap-2 rounded-sm border px-5 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-300"
+          style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border))"
           :disabled="remoteSaveBusy"
           @click="openEditorForLatest"
         >
@@ -235,7 +242,8 @@ onUnmounted(() => {
         <button
           v-if="canRetryRemoteSave()"
           type="button"
-          class="ml-2 inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          class="ml-2 inline-flex items-center gap-2 rounded-sm border px-5 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-300 disabled:opacity-50"
+          style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border))"
           :disabled="remoteSaveBusy"
           @click="retryRemoteSave"
         >

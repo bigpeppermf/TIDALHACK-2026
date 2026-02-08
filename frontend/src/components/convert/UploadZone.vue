@@ -85,10 +85,10 @@ onUnmounted(() => {
       v-if="!preview"
       for="file-upload"
       :class="[
-        'group relative flex w-full max-w-2xl cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 transition-all duration-300 md:p-16',
+        'group relative flex w-full max-w-2xl cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-all duration-300 md:p-16',
         dragOver
           ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-          : 'border-border hover:border-primary/40 hover:bg-card',
+          : 'border-[hsl(var(--border)/0.4)] hover:border-primary/40 hover:bg-[hsl(var(--card)/0.3)]',
       ]"
       @dragover.prevent="dragOver = true"
       @dragleave="dragOver = false"
@@ -154,7 +154,8 @@ onUnmounted(() => {
     <!-- Preview -->
     <div
       v-else
-      class="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card"
+      class="relative w-full max-w-2xl overflow-hidden rounded-xl border"
+      style="border-color: hsl(var(--border) / 0.4); background: hsl(var(--card) / 0.5)"
     >
       <div class="relative aspect-video w-full">
         <!-- PDF preview -->
@@ -227,7 +228,7 @@ onUnmounted(() => {
     <button
       v-if="preview && selectedFile"
       type="button"
-      class="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"
+      class="inline-flex items-center gap-2 rounded-sm bg-primary px-8 py-3 text-[11px] font-semibold tracking-[0.12em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
       @click="submit"
     >
       Convert to LaTeX

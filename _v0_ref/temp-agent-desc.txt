@@ -1,0 +1,113 @@
+Redesign the full frontend for Monogram — a Vue 3 + TypeScript web app that converts handwritten notes into LaTeX using AI. The app uses Tailwind CSS v4, shadcn/vue primitives, and Clerk for authentication. Keep the same dark-first, purple-accented design language but make everything look more polished, modern, and cohesive. Here's every page and component:
+
+Design System
+Theme: Dark mode only (pure black #000 background, near-white #f2f2f2 text)
+Brand Color: Purple hsl(270 60% 55%) — used for buttons, links, focus rings, accents
+Surface colors: Cards are hsl(0 0% 4%), borders are hsl(270 4% 16%), muted text is hsl(270 5% 55%)
+Fonts: Body = 'Domine' (serif), Display/Logo = 'Rubik Marker Hatch' (handwriting style), Mono = system monospace
+Background pattern: Subtle dot grid (radial-gradient dots at 24px spacing)
+Border radius: 10px default
+Icons: Lucide icon library
+Animations: Spring physics (motion-v), scroll-triggered fade-ups, hover glows
+Page 1: Landing / Home Page (/)
+A single-page marketing site with these sections:
+
+Hero Section
+Animated brand intro: the word "monogram" appears with a handwriting stroke animation (SVG text with stroke-dasharray), then a purple selection overlay sweeps across it, then the text splits into "mono" + "gram" and falls into place with spring physics, then a mouse-reactive purple text-shadow glow follows the cursor
+Two CTA buttons: "Start Converting" (solid purple, links to /convert) + "See How It Works" (outlined, scrolls to #how-it-works)
+Stats bar below CTAs: "99% Accuracy" · "<3s Conversion" · "10k+ Equations" in a 3-column row
+Features Grid
+6 feature cards in a bento grid layout (3 columns on desktop, 1 on mobile, some cards span 2-3 cols):
+Drag & Drop Upload (upload icon)
+AI-Powered OCR (lightning icon)
+Clean LaTeX Output (code brackets icon)
+Live Preview (eye icon)
+Export Options (download icon)
+Edit & Refine (clipboard icon)
+Each card: dark card background, purple border glow on hover, gradient overlay on hover, scroll-triggered fade-up animation
+How It Works
+3-step vertical timeline with a gradient connector line on the left:
+Upload Your Notes (image upload icon)
+AI Processes It (code/processing icon)
+Edit & Export (download icon)
+Each step has a numbered circle, title, and description, with scroll-triggered slide-in animations
+Page 2: Convert Page (/convert)
+A multi-step conversion flow with a step indicator bar at the top (1. Upload → 2. Processing → 3. Result):
+
+Upload Stage
+Title: "Convert Your Notes"
+UploadZone component: Large dashed-border drop zone with upload icon, "Drag & drop your notes" text, file type badges (JPEG, PNG, WebP, PDF), max 10MB notice. On drag-over: border turns purple with glow. After file selection: shows image preview or PDF icon with filename, filesize, and X remove button. A "Convert to LaTeX" purple button appears below.
+Processing Stage
+LoadingAnimation component: Spinning pen icon (80x80) inside a card, animated progress bar (purple fill), rotating status messages ("Reading your handwriting..." → "Recognizing equations..." → "Converting to LaTeX..." → "Almost done..."), dot indicators showing current stage
+Error Stage
+Red X icon, "Conversion Failed" title, error message, "Try Again" purple button
+Result Stage
+ResultView component: Full-viewport side-by-side split:
+Left panel ("Original"): Header with eye icon + "Original" label + zoom slider (60-140%), renders uploaded image or PDF (with canvas rendering and page navigation for PDFs)
+Right panel ("LaTeX"): Tab toggle between Source (raw LaTeX textarea) and Preview (rendered KaTeX math on white background), zoom slider (70-150%), action bar with character count, Copy button, Download dropdown (.tex, .html, .pdf)
+Floating "Convert Another" reset button at bottom center
+Page 3: Dashboard (/dashboard) — Auth Required
+Two-column layout: project list (45% left) + sticky preview panel (55% right, desktop only)
+
+Top Bar
+"Dashboard" title, "New Project" outlined button with plus icon, "New Conversion" primary button with upload icon
+Project List
+ProjectRow components: Horizontal cards with:
+Thumbnail (80x80)
+Project name (bold)
+LaTeX snippet preview (italic, truncated, muted text)
+Last updated timestamp (relative)
+Status badge: Converted (purple), Processing (yellow + spinner), Failed (red)
+Hover actions row: View (eye), Edit (pen), Retry (rotate), Delete (trash) icons
+Selected state: purple ring highlight
+Preview Panel (desktop)
+Sticky card with header: eye icon + "Preview" label + project name
+Download dropdown (.tex, .html, .pdf) + "Open in Editor" button
+White background area with rendered LaTeX (KaTeX)
+Empty State
+FileText icon, "No Projects Yet" heading, "Upload Document" CTA button
+Error State
+Red AlertCircle icon, error message, retry button
+Loading State
+Skeleton shimmer cards (3 rows with shimmer animation)
+Page 4: Editor (/editor) — Auth Required
+Full-screen LaTeX editor with no page scrolling, fills entire viewport below navbar.
+
+LatexEditorPanel component (the core):
+Header bar: Project badge (rounded tag), project name, "Recompile" button (Ctrl+Enter shortcut), "Share" button
+3-column layout:
+Files sidebar (60px, hidden on mobile): Lists project files with active file indicator
+Source editor (center): CodeMirror editor with LaTeX syntax highlighting (stex mode), line numbers, bracket matching, auto-completion, history, line wrapping. Ctrl+Enter to recompile, Ctrl+S to save
+Preview panel (46% width, right): Compiled PDF viewer (canvas rendering with page navigation) OR live KaTeX preview fallback, zoom slider, compile status badge
+Footer bar: Cursor position (Ln, Col), word count, character count, Copy button, Download dropdown (.tex, .html, .pdf)
+Compile status badges: Ready (gray), Compiled (emerald/green), Compiling (amber + spinner), Needs Recompile (yellow), Compile Failed (red)
+Save status indicator: Auto Save / Saving... / Saved / Save Failed
+Page 5: Settings (/settings) — Auth Required
+Two-column layout: icon sidebar (48px) + content card
+
+Sections (navigated via sidebar icons):
+Profile: Display Name + Email text inputs, "Save Changes" purple button
+API Keys: Placeholder section (empty)
+Notifications: Toggle switches for "Conversion complete", "Error alerts", "Weekly summary"
+Appearance: Placeholder text: "Dark mode is default, theme switching coming soon"
+Language: Placeholder text: "English only"
+Toggle switches are custom-built with Tailwind (purple when on, gray when off)
+
+Global Layout Components
+AppNavbar
+Desktop: Fixed RIGHT sidebar (64px wide), glassmorphism background (backdrop-blur), contains:
+"m" logo in a rounded square at top
+Vertical navigation links (text rotated 180°, vertical writing mode): Home, Features, Convert, Editor, Dashboard
+"monogram" brand text at bottom (also vertical)
+Clerk UserButton (avatar) or SignInButton at top-right corner
+Mobile: Top horizontal bar with "monogram" text left, Login/UserButton right, hamburger "Menu" button → expandable link bar below
+AppFooter
+Simple footer: "m" logo, "monogram" text, nav links (Features, Dashboard, Settings, Convert), copyright line "Built with AI"
+Key Interactions & Data
+Auth: Clerk handles sign-in/sign-up via modal, JWT tokens sent as Bearer auth
+Convert flow: Upload file → POST /api/convert (multipart) → get LaTeX back → display result
+Dashboard: GET /api/tex lists projects, DELETE/PUT for management
+Editor: Auto-save with 500ms debounce, POST /api/tex/:id/compile for PDF compilation
+Export: Download as .tex, .html, or .pdf via /api/tex/:id/export?format=
+Toast notifications: vue-sonner for success/error toasts
+Generate complete, production-ready code for each page/component using Vue 3 <script setup lang="ts">, Tailwind CSS v4, and shadcn/vue primitives. Keep the same dark purple aesthetic but make the UI feel premium, clean, and highly polished. Focus on smooth micro-interactions, consistent spacing, refined typography hierarchy, and a cohesive visual system across all pages.

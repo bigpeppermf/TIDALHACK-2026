@@ -122,16 +122,35 @@ async function handlePreviewDownload(format: 'tex' | 'html' | 'pdf') {
     return
   }
 
+  let exportId = project.id
+
+  // Auto-promote local projects before export
   if (project.id.startsWith('local-')) {
-    authErrorMessage.value = `${format.toUpperCase()} export requires a saved project.`
-    setTimeout(() => { if (authErrorMessage.value.includes('export requires')) authErrorMessage.value = '' }, 4000)
-    return
+    try {
+      const promoted = await addConvertedProject({
+        name: project.name || 'Untitled project',
+        latex: project.latex || '',
+        sourceFilename: project.name || 'main.tex',
+        sourceKind: 'unknown',
+        ownerId: userId.value ?? null,
+      })
+      if (promoted.id.startsWith('local-')) {
+        authErrorMessage.value = 'Sign in to enable HTML/PDF export.'
+        setTimeout(() => { if (authErrorMessage.value.includes('Sign in')) authErrorMessage.value = '' }, 4000)
+        return
+      }
+      exportId = promoted.id
+    } catch {
+      authErrorMessage.value = 'Could not save project. Sign in and try again.'
+      setTimeout(() => { if (authErrorMessage.value.includes('Could not')) authErrorMessage.value = '' }, 4000)
+      return
+    }
   }
 
   try {
     await exportFile({
       format,
-      texFileId: project.id,
+      texFileId: exportId,
       latex: project.latex,
       filename: project.name || 'monogram-output',
     })
@@ -286,35 +305,34 @@ const previewHtml = computed(() => {
     <AppNavbar />
     <div class="fixed inset-0 bg-grid-pattern opacity-20" />
 
-    <main class="relative z-10 mx-auto max-w-7xl px-6 pt-10 pb-12">
+    <main class="relative z-10 mx-auto max-w-7xl px-6 pt-20 pb-12 md:pr-28">
       <!-- Page header -->
-      <div class="mb-8 flex items-center justify-between">
+      <div class="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <div class="mb-3 flex items-center gap-3">
+            <div class="h-px w-8 bg-primary" />
+            <span class="text-[11px] font-semibold tracking-[0.3em] uppercase text-primary">Projects</span>
+          </div>
           <h1 class="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p class="mt-1 text-sm text-muted-foreground">Your recent conversions and projects.</p>
-          <p v-if="authErrorMessage" class="mt-2 text-sm text-destructive">{{ authErrorMessage }}</p>
+          <p class="mt-2 text-[13px] tracking-wide text-muted-foreground/70">Your recent conversions and projects.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
           <button
-            class="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            class="inline-flex items-center gap-2 rounded-sm border px-5 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-300 hover:text-foreground"
+            style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border))"
             @click="handleNewProject"
           >
-            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
             New Project
           </button>
           <button
-            class="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"
+            class="inline-flex items-center gap-2 rounded-sm bg-primary px-5 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
             @click="handleUpload"
           >
-            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-            </svg>
             New Conversion
           </button>
         </div>
       </div>
+      <p v-if="authErrorMessage" class="mb-4 rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-[12px] text-destructive">{{ authErrorMessage }}</p>
 
       <!-- Empty state -->
       <EmptyState v-if="projects.length === 0" @upload="handleUpload" />
@@ -324,16 +342,16 @@ const previewHtml = computed(() => {
         <!-- Left: Project list -->
         <section class="w-full lg:w-[45%]">
           <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-foreground">Recent Projects</h2>
-            <span class="text-xs text-muted-foreground">{{ projects.length }} project{{ projects.length === 1 ? '' : 's' }}</span>
+            <h2 class="text-[13px] font-semibold tracking-[0.15em] uppercase text-foreground">Recent Projects</h2>
+            <span class="text-[11px] tracking-wide text-muted-foreground/50">{{ projects.length }} project{{ projects.length === 1 ? '' : 's' }}</span>
           </div>
           <div class="space-y-2">
             <div
               v-for="project in projects"
               :key="project.id"
               :class="[
-                'cursor-pointer rounded-xl transition-all',
-                selectedProjectId === project.id ? 'ring-2 ring-primary' : '',
+                'cursor-pointer rounded-lg transition-all duration-300',
+                selectedProjectId === project.id ? 'ring-1 ring-primary/50' : '',
               ]"
               @click="handleSelectProject(project.id)"
             >
@@ -352,15 +370,15 @@ const previewHtml = computed(() => {
         <!-- Right: Preview panel (sticky) -->
         <aside class="hidden lg:block lg:w-[55%]">
           <div class="sticky top-24">
-            <div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+            <div
+              class="flex flex-col overflow-hidden rounded-xl border"
+              style="background: hsl(var(--card) / 0.6); border-color: hsl(var(--border) / 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px)"
+            >
               <!-- Preview header -->
-              <div class="flex items-center justify-between border-b border-border px-5 py-3">
+              <div class="flex items-center justify-between px-5 py-3" style="border-bottom: 1px solid hsl(var(--border) / 0.3)">
                 <div class="flex items-center gap-2">
-                  <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span class="text-sm font-medium text-foreground">Preview</span>
-                  <span v-if="selectedProject" class="truncate text-xs text-muted-foreground">
+                  <span class="text-[11px] font-semibold tracking-[0.15em] uppercase text-muted-foreground/60">Preview</span>
+                  <span v-if="selectedProject" class="truncate text-[11px] tracking-wide text-muted-foreground/40">
                     — {{ selectedProject.name }}
                   </span>
                 </div>
@@ -369,39 +387,38 @@ const previewHtml = computed(() => {
                   <div class="relative">
                     <button
                       type="button"
-                      class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
+                      class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+                      style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.6)"
                       :disabled="!selectedProject || exportingFile"
                       @click="showPreviewDownload = !showPreviewDownload"
                     >
-                      <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                      </svg>
                       {{ exportingFile ? 'Exporting...' : 'Download' }}
-                      <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg class="h-3 w-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m6 9 6 6 6-6" />
                       </svg>
                     </button>
                     <div
                       v-if="showPreviewDownload"
-                      class="absolute right-0 top-full z-10 mt-1 w-36 rounded-md border border-border bg-card py-1 shadow-lg"
+                      class="absolute right-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-sm border shadow-xl"
+                      style="background: hsl(var(--card) / 0.9); border-color: hsl(var(--border) / 0.4); backdrop-filter: blur(16px)"
                     >
                       <button
                         type="button"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-[10px] font-medium tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         @click="handlePreviewDownload('tex')"
                       >
                         .tex
                       </button>
                       <button
                         type="button"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-[10px] font-medium tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         @click="handlePreviewDownload('html')"
                       >
                         .html
                       </button>
                       <button
                         type="button"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-[10px] font-medium tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         @click="handlePreviewDownload('pdf')"
                       >
                         .pdf
@@ -412,7 +429,7 @@ const previewHtml = computed(() => {
                   <button
                     v-if="selectedProject"
                     type="button"
-                    class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-opacity hover:opacity-90"
+                    class="rounded-sm bg-primary px-4 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
                     @click="handleEdit(selectedProject.id)"
                   >
                     Open in Editor

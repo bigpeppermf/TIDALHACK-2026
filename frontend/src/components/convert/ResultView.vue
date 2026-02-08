@@ -407,18 +407,18 @@ async function handleFormatChange() {
 <template>
   <div
     :class="[
-      'flex w-full h-[calc(100vh-56px)] max-w-full flex-col gap-4 transition-all duration-700 lg:flex-row px-4 py-4',
+      'flex w-full h-[calc(100vh-56px)] max-w-full flex-col gap-4 transition-all duration-700 lg:flex-row px-4 py-4 md:pr-24',
       slideIn ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
     ]"
   >
     <!-- Left panel: Original Image -->
     <div
       :class="[
-        'flex-1 flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-100',
+        'flex-1 flex flex-col overflow-hidden rounded-xl border border-[hsl(var(--border)/0.4)] bg-card transition-all duration-700 delay-100',
         slideIn ? 'translate-x-0 opacity-100' : '-translate-x-12 opacity-0',
       ]"
     >
-      <div class="flex items-center justify-between gap-4 border-b border-border px-5 py-3 flex-shrink-0">
+      <div class="flex items-center justify-between gap-4 px-5 py-3 flex-shrink-0" style="border-bottom: 1px solid hsl(var(--border) / 0.3)">
         <div class="flex items-center gap-2">
           <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
@@ -529,41 +529,35 @@ async function handleFormatChange() {
     <!-- Right panel: LaTeX -->
     <div
       :class="[
-        'flex-1 flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-200',
+        'flex-1 flex flex-col overflow-hidden rounded-xl border border-[hsl(var(--border)/0.4)] bg-card transition-all duration-700 delay-200',
         slideIn ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0',
       ]"
     >
       <!-- Tab header -->
-      <div class="flex items-center justify-between border-b border-border px-5 py-3 flex-shrink-0">
+      <div class="flex items-center justify-between px-5 py-3 flex-shrink-0" style="border-bottom: 1px solid hsl(var(--border) / 0.3)">
         <div class="flex gap-1">
           <button
             type="button"
             :class="[
-              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
+              'flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300',
               activeTab === 'source'
                 ? 'bg-secondary text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground/50 hover:text-foreground',
             ]"
             @click="activeTab = 'source'"
           >
-            <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 18 22 12 16 6M8 6 2 12 8 18" />
-            </svg>
             Source
           </button>
           <button
             type="button"
             :class="[
-              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
+              'flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300',
               activeTab === 'preview'
                 ? 'bg-secondary text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground/50 hover:text-foreground',
             ]"
             @click="activeTab = 'preview'"
           >
-            <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
-            </svg>
             Preview
           </button>
         </div>
@@ -603,37 +597,32 @@ async function handleFormatChange() {
       </div>
 
       <!-- Action bar -->
-      <div class="flex items-center justify-between border-t border-border px-5 py-3 flex-shrink-0">
-        <span class="text-xs text-muted-foreground">{{ code.length }} characters</span>
+      <div class="flex items-center justify-between px-5 py-3 flex-shrink-0" style="border-top: 1px solid hsl(var(--border) / 0.3)">
+        <span class="text-[10px] tracking-wide text-muted-foreground/50">{{ code.length }} characters</span>
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary"
+            class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+            style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
             @click="handleCopy"
           >
-            <!-- Check or Clipboard icon -->
-            <svg v-if="copied" class="h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg v-if="copied" class="h-3 w-3 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 6 9 17l-5-5" />
-            </svg>
-            <svg v-else class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
             </svg>
             {{ copied ? 'Copied' : 'Copy' }}
           </button>
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary"
+            class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+            style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
             @click="showDownloadOptions = !showDownloadOptions"
           >
-            <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
             Download
           </button>
-          <div v-if="showDownloadOptions" class="inline-flex items-center gap-2 rounded-md border border-border bg-[hsl(var(--card)/0.92)] px-2 py-1">
+          <div v-if="showDownloadOptions" class="inline-flex items-center gap-2 rounded-sm border px-2 py-1" style="background: hsl(var(--card) / 0.8); border-color: hsl(var(--border) / 0.4)">
             <select
               v-model="selectedFormat"
-              class="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground outline-none"
+              class="rounded-sm bg-transparent px-2 py-1 text-[10px] tracking-wide text-foreground outline-none" style="border: 1px solid hsl(var(--border) / 0.3)"
               @change="handleFormatChange"
             >
               <option
@@ -647,7 +636,7 @@ async function handleFormatChange() {
             </select>
             <button
               type="button"
-              class="rounded border border-border px-2 py-1 text-xs text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+              class="rounded-sm bg-primary px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90 disabled:opacity-50"
               :disabled="exporting"
               @click="handleDownload(selectedFormat)"
             >
@@ -656,7 +645,7 @@ async function handleFormatChange() {
           </div>
         </div>
       </div>
-      <div v-if="exportNotice" class="px-5 pb-3 text-xs text-muted-foreground">
+      <div v-if="exportNotice" class="px-5 pb-3 text-[11px] text-destructive/80">
         {{ exportNotice }}
       </div>
     </div>
@@ -665,10 +654,11 @@ async function handleFormatChange() {
     <div class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2">
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-full border border-border bg-[hsl(var(--card)/0.9)] px-4 py-2 text-sm text-foreground shadow-lg backdrop-blur-sm transition-colors hover:bg-secondary"
+        class="inline-flex items-center gap-2 rounded-sm border px-5 py-2.5 text-[11px] font-semibold tracking-[0.12em] uppercase shadow-xl transition-all duration-300"
+        style="background: hsl(var(--card) / 0.85); color: hsl(var(--foreground)); border-color: hsl(var(--border) / 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px)"
         @click="emit('reset')"
       >
-        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
         </svg>
         Convert Another

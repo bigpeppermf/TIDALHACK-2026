@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/vue'
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/vue'
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 
+const { user } = useUser()
 const mobileOpen = ref(false)
 
 const navLinks = [
@@ -17,30 +18,36 @@ const navLinks = [
 
 <template>
   <header class="pointer-events-none fixed inset-0 z-50">
-    <div class="pointer-events-auto absolute top-4 right-4">
-      <SignedOut>
-        <SignInButton mode="modal">
-          <Button size="sm">
-            Login
-          </Button>
-        </SignInButton>
-      </SignedOut>
-      <SignedIn>
-        <UserButton after-sign-out-url="/" />
-      </SignedIn>
-    </div>
-
+    <!-- Desktop: Fixed right sidebar -->
     <aside
-      class="pointer-events-auto absolute right-4 top-16 hidden h-[calc(100vh-5rem)] w-16 flex-col items-center justify-between rounded-xl border border-border/60 bg-[hsl(var(--background)/0.75)] py-4 backdrop-blur-xl md:flex"
+      class="pointer-events-auto absolute right-4 top-16 hidden h-[calc(100vh-5rem)] w-16 flex-col items-center justify-between rounded-xl py-4 md:flex"
+      style="
+        background: hsl(var(--background) / 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid hsl(var(--border) / 0.4);
+      "
       aria-label="Right navigation"
     >
-      <RouterLink
-        to="/"
-        class="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 text-sm font-semibold text-foreground"
-        aria-label="monogram home"
-      >
-        m
-      </RouterLink>
+      <div class="flex flex-col items-center">
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button
+              class="flex h-9 w-9 items-center justify-center rounded-md text-[9px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+              style="
+                background: transparent;
+                color: hsl(var(--muted-foreground));
+                border: 1px solid hsl(var(--border) / 0.4);
+              "
+            >
+              Log in
+            </button>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton after-sign-out-url="/" />
+        </SignedIn>
+      </div>
 
       <nav class="flex flex-col items-center gap-3">
         <template v-for="link in navLinks" :key="link.label">
@@ -53,22 +60,45 @@ const navLinks = [
         </template>
       </nav>
 
-      <span class="rotate-180 text-[10px] tracking-[0.35em] text-muted-foreground [writing-mode:vertical-rl]">
+      <span
+        class="rotate-180 text-[10px] tracking-[0.35em] text-muted-foreground/40"
+        style="writing-mode: vertical-rl"
+      >
         monogram
       </span>
     </aside>
 
-    <div class="pointer-events-auto border-b border-border/40 bg-[hsl(var(--background)/0.82)] px-4 py-3 backdrop-blur-xl md:hidden">
+    <!-- Mobile: Top bar -->
+    <div
+      class="pointer-events-auto px-4 py-3 md:hidden"
+      style="
+        background: hsl(var(--background) / 0.82);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid hsl(var(--border) / 0.3);
+      "
+    >
       <div class="flex items-center justify-between gap-3">
-        <RouterLink to="/" class="text-sm font-semibold tracking-wide text-foreground">
+        <RouterLink
+          to="/"
+          class="text-sm font-semibold tracking-wide text-foreground"
+          style="font-family: var(--font-heading)"
+        >
           monogram
         </RouterLink>
         <div class="flex items-center gap-2">
           <SignedOut>
             <SignInButton mode="modal">
-              <Button size="sm">
+              <button
+                class="px-3 py-1 text-[11px] font-semibold tracking-[0.1em] uppercase rounded-sm border transition-colors"
+                style="
+                  background: transparent;
+                  color: hsl(var(--muted-foreground));
+                  border-color: hsl(var(--border));
+                "
+              >
                 Login
-              </Button>
+              </button>
             </SignInButton>
           </SignedOut>
           <SignedIn>
@@ -76,7 +106,8 @@ const navLinks = [
           </SignedIn>
           <button
             type="button"
-            class="rounded-md border border-border px-2 py-1 text-xs text-foreground"
+            class="rounded-sm px-2 py-1 text-xs text-muted-foreground transition-colors"
+            style="border: 1px solid hsl(var(--border))"
             :aria-label="mobileOpen ? 'Close menu' : 'Open menu'"
             @click="mobileOpen = !mobileOpen"
           >
@@ -90,7 +121,8 @@ const navLinks = [
           <a
             v-if="link.href"
             :href="link.href"
-            class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+            class="rounded-sm px-3 py-1.5 text-[11px] tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            style="border: 1px solid hsl(var(--border) / 0.4)"
             @click="mobileOpen = false"
           >
             {{ link.label }}
@@ -98,7 +130,8 @@ const navLinks = [
           <RouterLink
             v-else
             :to="link.to!"
-            class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+            class="rounded-sm px-3 py-1.5 text-[11px] tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:text-foreground"
+            style="border: 1px solid hsl(var(--border) / 0.4)"
             @click="mobileOpen = false"
           >
             {{ link.label }}
@@ -116,8 +149,8 @@ const navLinks = [
   letter-spacing: 0.18em;
   font-size: 0.62rem;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  transition: color 0.2s ease;
+  color: hsl(var(--muted-foreground) / 0.5);
+  transition: color 0.3s ease;
 }
 
 .vertical-nav-link:hover {

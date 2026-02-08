@@ -465,25 +465,37 @@ async function compilePreview() {
     return
   }
 
-  const result = await compileProjectPdf(projectId)
-  if (requestId !== compileRequestId || projectId !== currentProjectId.value) {
-    return
-  }
+  try {
+    const result = await compileProjectPdf(projectId)
+    if (requestId !== compileRequestId || projectId !== currentProjectId.value) {
+      return
+    }
 
-  if (result.ok) {
-    clearAuthError()
-    compiledPdfData.value = result.pdfData
-    compiledCode.value = sourceSnapshot
-    compileState.value = 'compiled'
-    return
-  }
+    if (result.ok) {
+      clearAuthError()
+      compiledPdfData.value = result.pdfData
+      compiledCode.value = sourceSnapshot
+      compileState.value = 'compiled'
+      return
+    }
 
-  if (result.error === AUTH_SESSION_EXPIRED_MESSAGE) {
-    setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    if (result.error === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
+    compiledPdfData.value = null
+    compileState.value = 'error'
+    compileErrorMessage.value = result.error
+  } catch (error) {
+    if (requestId !== compileRequestId) {
+      return
+    }
+    if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
+    compiledPdfData.value = null
+    compileState.value = 'error'
+    compileErrorMessage.value = error instanceof Error ? error.message : 'Compile request failed. Check your connection.'
   }
-  compiledPdfData.value = null
-  compileState.value = 'error'
-  compileErrorMessage.value = result.error
 }
 
 function pickInitialActiveFile(files: ProjectFileMeta[] | null): string | null {
@@ -584,9 +596,13 @@ async function hydrateFromProject(projectId: string | null) {
     return
   }
   isHydrating.value = false
-  await compilePreview()
-  if (requestId !== hydrateRequestId) {
-    return
+
+  // Only auto-compile for remote projects; local projects show live preview only
+  if (!project.id.startsWith('local-')) {
+    await compilePreview()
+    if (requestId !== hydrateRequestId) {
+      return
+    }
   }
 
   if (!routeProjectId.value && project.id) {
@@ -725,11 +741,35 @@ async function handleDownloadFormat(format: 'tex' | 'html' | 'pdf') {
     return
   }
 
-  const projectId = currentProjectId.value
-  if (!projectId || projectId.startsWith('local-')) {
-    authErrorMessage.value = `${format.toUpperCase()} export requires a saved project. Save first by compiling.`
-    setTimeout(() => { if (authErrorMessage.value.includes('export requires')) authErrorMessage.value = '' }, 4000)
+  let projectId = currentProjectId.value
+  if (!projectId) {
+    compileErrorMessage.value = 'No active project.'
+    compileState.value = 'error'
     return
+  }
+
+  // Auto-promote local projects before export
+  if (projectId.startsWith('local-')) {
+    try {
+      const promoted = await addConvertedProject({
+        name: currentProjectName.value || 'Untitled project',
+        latex: code.value,
+        sourceFilename: currentSourceFilename.value || 'main.tex',
+        sourceKind: 'unknown',
+        ownerId: userId.value ?? null,
+      })
+      if (promoted.id.startsWith('local-')) {
+        compileErrorMessage.value = 'Sign in to enable HTML/PDF export.'
+        compileState.value = 'error'
+        return
+      }
+      projectId = promoted.id
+      currentProjectId.value = promoted.id
+    } catch {
+      compileErrorMessage.value = 'Could not save project. Sign in and try again.'
+      compileState.value = 'error'
+      return
+    }
   }
 
   try {
@@ -739,9 +779,10 @@ async function handleDownloadFormat(format: 'tex' | 'html' | 'pdf') {
       latex: code.value,
       filename: currentProjectName.value || 'monogram-output',
     })
-  } catch {
-    authErrorMessage.value = `Export failed. Try recompiling first.`
-    setTimeout(() => { if (authErrorMessage.value.includes('Export failed')) authErrorMessage.value = '' }, 4000)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Export failed'
+    compileErrorMessage.value = `${format.toUpperCase()} export failed: ${message}`
+    compileState.value = 'error'
   }
 }
 
@@ -794,8 +835,11 @@ onUnmounted(() => {
   <main class="h-screen overflow-hidden bg-background">
     <AppNavbar />
 
-    <section class="h-[calc(100vh-3.5rem)] px-0 md:h-screen">
-      <p v-if="authErrorMessage" class="mx-3 mt-2 text-sm text-destructive md:mx-5">{{ authErrorMessage }}</p>
+    <section class="h-[calc(100vh-3.5rem)] pt-14 px-0 md:pt-0 md:h-screen md:pr-20">
+      <div v-if="authErrorMessage" class="mx-3 mt-2 flex items-center justify-between rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 md:mx-5">
+        <span class="text-[12px] text-destructive">{{ authErrorMessage }}</span>
+        <button type="button" class="ml-4 text-[10px] font-semibold tracking-[0.1em] uppercase text-destructive/70 transition-colors hover:text-destructive" @click="clearAuthError">Dismiss</button>
+      </div>
       <div class="h-full overflow-hidden bg-card">
         <LatexEditorPanel
           :model-value="visibleCode"

@@ -12,8 +12,7 @@ relationships
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Index, Text, TIMESTAMP, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, Index, String, Text, TIMESTAMP, ForeignKey
 from .base import Base
 
 
@@ -24,9 +23,9 @@ class User(Base):
     )
 
     id = Column(
-        UUID(as_uuid=True),
+        String(36),
         primary_key=True,
-        default=uuid.uuid4
+        default=lambda: str(uuid.uuid4())
     )
 
     oauth_provider = Column(
@@ -68,13 +67,13 @@ class TexFile(Base):
     )
 
     id = Column(
-        UUID(as_uuid=True),
+        String(36),
         primary_key=True,
-        default=uuid.uuid4
+        default=lambda: str(uuid.uuid4())
     )
 
     user_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )

@@ -64,7 +64,7 @@ def _dev_bypass_enabled() -> bool:
 
 
 def _get_or_create_dev_user(db: Session) -> User:
-    dev_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    dev_id = "00000000-0000-0000-0000-000000000001"
     user = db.query(User).filter(User.id == dev_id).first()
     if user:
         return user

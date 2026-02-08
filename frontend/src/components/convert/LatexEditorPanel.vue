@@ -348,27 +348,31 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-full min-h-0 flex-col overflow-hidden bg-card">
-    <header class="flex items-center justify-between gap-3 border-b border-border bg-[hsl(var(--card)/0.95)] px-3 py-2 md:px-4">
+    <header
+      class="flex items-center justify-between gap-3 px-3 py-2.5 md:px-4"
+      style="background: hsl(var(--card) / 0.6); border-bottom: 1px solid hsl(var(--border) / 0.3); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px)"
+    >
       <div class="flex min-w-0 items-center gap-3">
-        <span class="rounded-md border border-border bg-secondary px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+        <span class="rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary" style="border-color: hsl(var(--border) / 0.4); background: hsl(var(--secondary) / 0.5)">
           Project
         </span>
-        <span class="truncate text-sm font-semibold text-foreground">{{ projectTitle }}</span>
+        <span class="truncate text-[12px] font-semibold tracking-wide text-foreground">{{ projectTitle }}</span>
       </div>
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-[hsl(var(--muted)/0.7)]"
+          class="inline-flex items-center gap-1.5 rounded-sm border px-4 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+          style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
           :disabled="props.compileStatus === 'compiling'"
           title="Ctrl+Enter or Ctrl+S"
           @click="emit('recompile')"
         >
-          <div v-if="props.compileStatus === 'compiling'" class="h-3 w-3 animate-spin rounded-full border border-foreground border-t-transparent" />
+          <div v-if="props.compileStatus === 'compiling'" class="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
           {{ props.compileStatus === 'compiling' ? 'Compiling...' : 'Recompile' }}
         </button>
         <button
           type="button"
-          class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground transition-opacity hover:opacity-90"
+          class="rounded-sm bg-primary px-4 py-1.5 text-[10px] font-semibold tracking-[0.1em] uppercase text-primary-foreground transition-all duration-300 hover:opacity-90"
           @click="emit('share')"
         >
           {{ props.shareLabel || 'Share' }}
@@ -377,8 +381,8 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="flex min-h-0 flex-1 overflow-hidden">
-      <aside v-if="hasRealFiles" class="hidden w-60 flex-col border-r border-border bg-[hsl(var(--muted)/0.3)] md:flex">
-        <div class="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <aside v-if="hasRealFiles" class="hidden w-60 flex-col md:flex" style="border-right: 1px solid hsl(var(--border) / 0.25); background: hsl(var(--muted) / 0.2)">
+        <div class="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/50" style="border-bottom: 1px solid hsl(var(--border) / 0.25)">
           Files
         </div>
         <div class="space-y-1 p-2 text-sm">
@@ -400,21 +404,21 @@ onBeforeUnmount(() => {
       </aside>
 
       <div class="flex min-w-0 flex-1 overflow-hidden">
-        <section class="flex min-w-0 flex-1 flex-col" :class="hasRealFiles ? 'border-r border-border' : ''">
-          <div class="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
+        <section class="flex min-w-0 flex-1 flex-col" :style="hasRealFiles ? 'border-right: 1px solid hsl(var(--border) / 0.25)' : ''">
+          <div class="flex items-center justify-between px-3 py-2 text-[10px] text-muted-foreground/50" style="border-bottom: 1px solid hsl(var(--border) / 0.25)">
             <div class="flex items-center gap-2">
-              <span class="rounded border border-border bg-[hsl(var(--background)/0.8)] px-2 py-0.5 text-foreground">
+              <span class="rounded-sm px-2 py-0.5 text-[10px] tracking-wide text-foreground/80" style="border: 1px solid hsl(var(--border) / 0.3); background: hsl(var(--background) / 0.6)">
                 {{ sourceTitle }}
               </span>
-              <span v-if="props.readOnly" class="rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Read only</span>
-              <span :class="saveIndicatorClass">{{ props.saveStatusLabel || 'Auto Save' }}</span>
+              <span v-if="props.readOnly" class="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em]" style="border: 1px solid hsl(var(--border) / 0.3)">Read only</span>
+              <span :class="saveIndicatorClass" class="text-[10px] tracking-wide">{{ props.saveStatusLabel || 'Auto Save' }}</span>
             </div>
-            <div class="flex items-center gap-2 md:hidden">
+            <div class="flex items-center gap-1 md:hidden">
               <button
                 type="button"
                 :class="[
-                  'rounded px-2 py-1',
-                  activeTab === 'source' ? 'bg-secondary text-foreground' : 'text-muted-foreground',
+                  'rounded-sm px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300',
+                  activeTab === 'source' ? 'bg-secondary text-foreground' : 'text-muted-foreground/50',
                 ]"
                 @click="setActiveTab('source')"
               >
@@ -423,8 +427,8 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 :class="[
-                  'rounded px-2 py-1',
-                  activeTab === 'preview' ? 'bg-secondary text-foreground' : 'text-muted-foreground',
+                  'rounded-sm px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300',
+                  activeTab === 'preview' ? 'bg-secondary text-foreground' : 'text-muted-foreground/50',
                 ]"
                 @click="setActiveTab('preview')"
               >
@@ -458,10 +462,10 @@ onBeforeUnmount(() => {
           class="w-full min-w-0 bg-[hsl(var(--muted)/0.28)] md:w-[46%]"
           :class="activeTab === 'source' ? 'hidden md:block' : 'block'"
         >
-          <div class="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
+          <div class="flex items-center justify-between px-3 py-2 text-[10px] text-muted-foreground/50" style="border-bottom: 1px solid hsl(var(--border) / 0.25)">
             <div class="flex items-center gap-2">
-              <span>{{ hasCompiledPdf ? 'PDF Preview' : 'Live Preview' }}</span>
-              <span class="rounded px-2 py-0.5" :class="compileBadgeClass">{{ props.compileStatusLabel || 'Ready' }}</span>
+              <span class="tracking-wide">{{ hasCompiledPdf ? 'PDF Preview' : 'Live Preview' }}</span>
+              <span class="rounded-sm px-2 py-0.5 text-[10px]" :class="compileBadgeClass">{{ props.compileStatusLabel || 'Ready' }}</span>
             </div>
             <div class="flex items-center gap-2">
               <input
@@ -478,25 +482,27 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="h-[calc(100%-37px)] overflow-auto p-4">
-            <div v-if="props.compileStatus === 'compiling'" class="mx-auto flex min-h-[12rem] max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
-              <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <!-- Compile spinner overlay — shown above the live preview so user still sees content -->
+            <div v-if="props.compileStatus === 'compiling'" class="mx-auto mb-3 flex max-w-3xl items-center gap-2 rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              <div class="h-4 w-4 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
               <span>Compiling PDF...</span>
             </div>
 
-            <div v-else-if="pdfLoading" class="mx-auto flex min-h-[12rem] max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
+            <div v-if="pdfLoading" class="mx-auto flex min-h-[12rem] max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-[hsl(var(--card)/0.9)] text-sm text-muted-foreground">
               <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <span>Rendering PDF...</span>
             </div>
 
             <div v-else-if="hasCompiledPdf" class="mx-auto max-w-3xl space-y-3">
-              <div class="flex items-center justify-between rounded-sm border border-border bg-[hsl(var(--card)/0.9)] px-3 py-2 text-xs text-muted-foreground">
-                <button type="button" class="rounded border border-border px-2 py-1 text-foreground disabled:opacity-50" :disabled="currentPage <= 1" @click="prevPage">
+              <div class="flex items-center justify-between rounded-sm px-3 py-2 text-[10px] tracking-wide text-muted-foreground/60" style="border: 1px solid hsl(var(--border) / 0.3); background: hsl(var(--card) / 0.6)">
+                <button type="button" class="rounded-sm px-2 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase text-foreground disabled:opacity-50" style="border: 1px solid hsl(var(--border) / 0.4)" :disabled="currentPage <= 1" @click="prevPage">
                   Prev
                 </button>
                 <span>Page {{ currentPage }} / {{ totalPages }}</span>
                 <button
                   type="button"
-                  class="rounded border border-border px-2 py-1 text-foreground disabled:opacity-50"
+                  class="rounded-sm px-2 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase text-foreground disabled:opacity-50"
+                  style="border: 1px solid hsl(var(--border) / 0.4)"
                   :disabled="currentPage >= totalPages"
                   @click="nextPage"
                 >
@@ -548,8 +554,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <footer class="flex items-center justify-between border-t border-border bg-[hsl(var(--card)/0.96)] px-3 py-2 text-xs md:px-4">
-      <div class="flex items-center gap-3 text-muted-foreground">
+    <footer
+      class="flex items-center justify-between px-3 py-2 md:px-4"
+      style="background: hsl(var(--card) / 0.6); border-top: 1px solid hsl(var(--border) / 0.3); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px)"
+    >
+      <div class="flex items-center gap-3 text-[10px] tracking-wide text-muted-foreground/50">
         <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
         <span>{{ wordCount }} words</span>
         <span>{{ modelValue.length }} chars</span>
@@ -557,7 +566,8 @@ onBeforeUnmount(() => {
       <div class="relative flex items-center gap-2">
         <button
           type="button"
-          class="rounded-md border border-border px-3 py-1 text-foreground transition-colors hover:bg-secondary"
+          class="rounded-sm border px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+          style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
           @click="emit('copy')"
         >
           {{ copied ? 'Copied' : 'Copy' }}
@@ -565,26 +575,25 @@ onBeforeUnmount(() => {
         <div class="relative">
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-foreground transition-colors hover:bg-secondary"
+            class="inline-flex items-center gap-1.5 rounded-sm border px-3 py-1 text-[10px] font-semibold tracking-[0.1em] uppercase transition-all duration-300"
+            style="background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border) / 0.5)"
             @click="showDownloadMenu = !showDownloadMenu"
           >
-            <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
             Download
-            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="h-3 w-3 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
           <div
             v-if="showDownloadMenu"
-            class="absolute bottom-full right-0 mb-1 w-36 rounded-md border border-border bg-card py-1 shadow-lg"
+            class="absolute bottom-full right-0 mb-1 w-36 overflow-hidden rounded-sm border shadow-xl"
+            style="background: hsl(var(--card) / 0.9); border-color: hsl(var(--border) / 0.4); backdrop-filter: blur(16px)"
           >
             <button
               v-for="fmt in downloadFormats"
               :key="fmt.value"
               type="button"
-              class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-[10px] font-medium tracking-[0.1em] uppercase text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               @click="emit('download-format', fmt.value); showDownloadMenu = false"
             >
               {{ fmt.label }}

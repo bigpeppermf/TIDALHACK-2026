@@ -1,129 +1,220 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import SlamText from './SlamText.vue'
+import FadeIn from './FadeIn.vue'
+import TimelineStep from './TimelineStep.vue'
+import LineReveal from './LineReveal.vue'
+import { RouterLink } from 'vue-router'
 
 const steps = [
   {
     iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
-    step: '01',
     title: 'Upload Your Notes',
     description:
-      'Take a photo or scan of your handwritten notes and drag it into monogram. We support JPEG, PNG, and WebP.',
+      'Drag and drop your handwritten notes, equations, or diagrams. We support all common image formats and multi-page PDFs.',
   },
   {
-    iconPath: 'M6.5 6.5h11v11h-11zM12 2v4M12 18v4M2 12h4M18 12h4',
-    step: '02',
+    iconPath: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
     title: 'AI Processes It',
     description:
-      'Our AI model reads your handwriting and converts it into structured LaTeX code, preserving mathematical notation.',
+      'Our neural network reads your handwriting, recognizes mathematical structures, and converts everything into clean, semantic LaTeX code.',
   },
   {
-    iconPath: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6M16 13H8M16 17H8M10 9H8',
-    step: '03',
+    iconPath: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
     title: 'Edit & Export',
     description:
-      'Review the generated LaTeX with live preview. Edit inline, then copy or download the .tex file.',
+      'Review the output in our live editor, make refinements with syntax highlighting and auto-complete, then export as .tex, .html, or .pdf.',
   },
 ]
-
-const stepRefs = ref<(HTMLElement | null)[]>([])
-const visibleSteps = ref<Set<number>>(new Set())
-let observer: IntersectionObserver | null = null
-
-function setStepRef(el: HTMLElement | null, index: number) {
-  stepRefs.value[index] = el
-}
-
-onMounted(() => {
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          const idx = Number(entry.target.getAttribute('data-index'))
-          visibleSteps.value = new Set(visibleSteps.value).add(idx)
-          observer?.unobserve(entry.target)
-        }
-      }
-    },
-    { threshold: 0.2 }
-  )
-  for (const el of stepRefs.value) {
-    if (el) observer.observe(el)
-  }
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
-})
 </script>
 
 <template>
-  <section id="how-it-works" class="relative border-t border-border/50 py-24">
-    <div class="mx-auto max-w-5xl px-6">
+  <!-- How It Works -->
+  <section id="how-it-works" class="overflow-hidden relative">
+    <div class="py-28 md:py-32 px-6 md:px-12">
       <!-- Section header -->
-      <div class="mb-16 text-center">
-        <p class="mb-3 text-sm font-medium uppercase tracking-widest text-primary">
-          How It Works
-        </p>
-        <h2
-          class="mb-4 text-3xl font-bold text-foreground md:text-5xl"
-          style="text-wrap: balance"
-        >
-          Three simple steps
-        </h2>
-        <p
-          class="mx-auto max-w-xl text-muted-foreground"
-          style="text-wrap: pretty"
-        >
-          No setup, no configuration. Upload and get your LaTeX.
-        </p>
+      <div class="mb-20">
+        <FadeIn :delay="0">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="w-12 h-px bg-primary" />
+            <span class="text-primary text-[11px] tracking-[0.3em] uppercase">
+              Process
+            </span>
+          </div>
+        </FadeIn>
+        <SlamText
+          text="How it"
+          :angle="-3"
+          :delay="100"
+          size="text-[14vw] md:text-[6vw]"
+          weight="font-black"
+        />
+        <SlamText
+          text="works"
+          :angle="-3"
+          :delay="250"
+          size="text-[14vw] md:text-[6vw]"
+          weight="font-black"
+          :italic="true"
+        />
       </div>
 
-      <!-- Steps -->
-      <div class="relative flex flex-col gap-12 md:gap-16">
-        <!-- Vertical connector line -->
-        <div
-          class="absolute left-6 top-0 bottom-0 hidden w-px bg-gradient-to-b from-[hsl(var(--primary)/0.3)] via-[hsl(var(--primary)/0.1)] to-transparent md:left-8 md:block"
-        />
-
-        <div
+      <!-- Timeline -->
+      <div class="max-w-2xl ml-4 md:ml-16">
+        <TimelineStep
           v-for="(step, i) in steps"
-          :key="step.step"
-          :ref="(el) => setStepRef(el as HTMLElement | null, i)"
-          :data-index="i"
-          :class="[
-            'relative flex gap-6 transition-all duration-700 md:gap-8',
-            visibleSteps.has(i) ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0',
-          ]"
-          :style="{ transitionDelay: `${i * 200}ms` }"
-        >
-          <!-- Step icon circle -->
-          <div
-            class="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-card text-primary md:h-16 md:w-16"
-          >
-            <svg
-              class="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path :d="step.iconPath" />
-            </svg>
-          </div>
-
-          <!-- Content -->
-          <div class="flex-1 pt-1 md:pt-3">
-            <span class="mb-1 block font-mono text-xs text-primary">{{ step.step }}</span>
-            <h3 class="mb-2 text-xl font-semibold text-foreground">{{ step.title }}</h3>
-            <p class="max-w-md text-sm leading-relaxed text-muted-foreground">
-              {{ step.description }}
-            </p>
-          </div>
-        </div>
+          :key="step.title"
+          :step="i + 1"
+          :title="step.title"
+          :description="step.description"
+          :icon-path="step.iconPath"
+          :delay="i * 200"
+          :is-last="i === steps.length - 1"
+        />
       </div>
     </div>
+  </section>
+
+  <!-- Testimonial -->
+  <section class="overflow-hidden relative">
+    <LineReveal :delay="0" />
+
+    <div class="py-28 md:py-32 px-6 md:px-12">
+      <div class="max-w-4xl mx-auto text-center">
+        <FadeIn :delay="0">
+          <span
+            class="text-[80px] leading-none"
+            style="color: hsl(var(--primary) / 0.3); font-family: var(--font-heading)"
+          >
+            &ldquo;
+          </span>
+        </FadeIn>
+
+        <FadeIn :delay="200">
+          <blockquote
+            class="text-2xl md:text-4xl font-normal italic leading-snug text-foreground -mt-5"
+            style="font-family: var(--font-heading)"
+          >
+            It understood my terrible handwriting
+            better than I do. Three semesters of notes
+            <span class="text-primary">converted in an afternoon.</span>
+          </blockquote>
+        </FadeIn>
+
+        <FadeIn :delay="500">
+          <div class="mt-12 flex flex-col items-center gap-2">
+            <div class="w-10 h-px mb-2" style="background: hsl(var(--primary) / 0.3)" />
+            <span class="text-[13px] font-medium text-muted-foreground">
+              Dr. Elise Hartmann
+            </span>
+            <span class="text-xs text-muted-foreground/50">
+              Theoretical Physics, ETH Zurich
+            </span>
+          </div>
+        </FadeIn>
+      </div>
+    </div>
+
+    <LineReveal :delay="400" />
+  </section>
+
+  <!-- Final CTA -->
+  <section class="overflow-hidden relative">
+    <div
+      class="min-h-[80vh] flex flex-col items-center justify-center px-6 py-28 text-center"
+    >
+      <FadeIn :delay="0">
+        <span
+          class="text-[11px] tracking-[0.5em] uppercase text-muted-foreground/20 mb-12 block"
+        >
+          Ready?
+        </span>
+      </FadeIn>
+
+      <SlamText
+        text="Start"
+        :angle="-4"
+        :delay="100"
+        size="text-[16vw] md:text-[8vw]"
+        weight="font-black"
+        align="center"
+      />
+      <SlamText
+        text="Converting"
+        :angle="-4"
+        :delay="300"
+        size="text-[16vw] md:text-[8vw]"
+        weight="font-black"
+        :italic="true"
+        align="center"
+      />
+
+      <div class="mt-16 max-w-[520px]">
+        <FadeIn :delay="600">
+          <p class="text-base leading-relaxed text-muted-foreground mb-12">
+            Drop your handwritten notes and watch them transform into
+            clean, publication-ready LaTeX in seconds. No setup required.
+          </p>
+        </FadeIn>
+
+        <FadeIn :delay="800">
+          <div class="flex items-center justify-center gap-5 flex-wrap">
+            <RouterLink
+              to="/convert"
+              class="cta-primary inline-flex items-center gap-2.5 px-10 py-4 bg-primary text-primary-foreground text-[13px] font-semibold tracking-[0.1em] uppercase rounded-sm transition-all duration-400"
+              style="transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1)"
+            >
+              <span>Start Converting</span>
+              <span class="text-base">→</span>
+            </RouterLink>
+            <a
+              href="#features"
+              class="cta-secondary inline-flex items-center gap-2.5 px-10 py-4 bg-transparent text-muted-foreground text-[13px] font-medium tracking-[0.1em] uppercase border border-border rounded-sm transition-all duration-400"
+              style="transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1)"
+            >
+              <span>See How It Works</span>
+            </a>
+          </div>
+        </FadeIn>
+      </div>
+
+      <!-- File type badges -->
+      <FadeIn :delay="1100">
+        <div class="mt-16 flex items-center gap-3">
+          <span
+            v-for="format in ['JPEG', 'PNG', 'WebP', 'PDF']"
+            :key="format"
+            class="px-4 py-1.5 rounded-full text-[11px] tracking-[0.15em] border border-border/30 text-muted-foreground/40"
+          >
+            {{ format }}
+          </span>
+        </div>
+      </FadeIn>
+    </div>
+  </section>
+
+  <!-- Final brand statement -->
+  <section class="overflow-hidden relative">
+    <LineReveal :delay="0" />
+
+    <div
+      class="min-h-[60vh] flex flex-col items-center justify-center px-6 py-20"
+    >
+      <SlamText
+        text="monogram"
+        :angle="0"
+        :delay="200"
+        size="text-[12vw] md:text-[8vw]"
+        weight="font-black"
+        align="center"
+      />
+
+      <FadeIn :delay="600">
+        <p class="text-[11px] tracking-[0.4em] uppercase text-muted-foreground/40 mt-16">
+          Crafted with obsession
+        </p>
+      </FadeIn>
+    </div>
+
+    <LineReveal :delay="400" />
   </section>
 </template>

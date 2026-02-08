@@ -16,6 +16,7 @@ const stage = ref<Stage>('upload')
 const imageUrl = ref('')
 const isPdf = ref(false)
 const latexOutput = ref('')
+const uploadedFile = ref<File | null>(null)
 
 const allStages: ('upload' | 'loading' | 'result')[] = ['upload', 'loading', 'result']
 
@@ -28,6 +29,7 @@ function revokePreviewUrl() {
 
 async function handleFileAccepted(file: File) {
   isPdf.value = file.type === 'application/pdf'
+  uploadedFile.value = file
   revokePreviewUrl()
   imageUrl.value = isPdf.value ? '' : URL.createObjectURL(file)
   stage.value = 'loading'
@@ -47,6 +49,7 @@ function handleReset() {
   stage.value = 'upload'
   isPdf.value = false
   latexOutput.value = ''
+  uploadedFile.value = null
   resetConvert()
 }
 
@@ -144,6 +147,7 @@ onUnmounted(() => {
         v-if="stage === 'result'"
         :image-url="imageUrl"
         :is-pdf="isPdf"
+        :pdf-file="uploadedFile"
         :latex="latexOutput"
         @reset="handleReset"
       />

@@ -115,3 +115,124 @@
 .glow-line {
   background: linear-gradient(90deg, transparent, hsl(270 60% 55% / 0.35), transparent);
 }
+
+/* KaTeX rendering improvements */
+.katex-preview {
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.katex-preview .katex {
+  font-size: 1.15em;
+}
+
+.katex-preview .katex-display {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-preview .katex-display > .katex {
+  white-space: normal;
+}
+
+.katex-preview p {
+  margin-bottom: 1rem;
+  color: hsl(var(--foreground));
+}
+
+.katex-preview h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: hsl(var(--primary));
+}
+
+.katex-preview h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: hsl(var(--primary));
+}
+
+/* Ensure KaTeX math is visible and properly colored */
+.katex-preview .katex .mord,
+.katex-preview .katex .mrel,
+.katex-preview .katex .mop,
+.katex-preview .katex .mbin,
+.katex-preview .katex .mopen,
+.katex-preview .katex .mclose,
+.katex-preview .katex .mpunct {
+  color: hsl(var(--foreground));
+}
+
+/* Overleaf-style document preview */
+.latex-document-preview {
+  font-family: 'Computer Modern', 'Latin Modern', serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  color: #000;
+  padding: 2rem;
+}
+
+.latex-document-preview h2 {
+  font-family: 'Domine', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #000;
+}
+
+.latex-document-preview h3 {
+  font-family: 'Domine', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #000;
+}
+
+.latex-document-preview h4 {
+  font-family: 'Domine', serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #000;
+}
+
+.latex-document-preview p {
+  margin-bottom: 1rem;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.latex-document-preview .katex-display {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.latex-document-preview .katex {
+  font-size: 1.1em;
+}
+
+.latex-document-preview ul,
+.latex-document-preview ol {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.latex-document-preview li {
+  margin-bottom: 0.5rem;
+}
+
+.latex-document-preview strong {
+  font-weight: 700;
+}
+
+.latex-document-preview em {
+  font-style: italic;
+}

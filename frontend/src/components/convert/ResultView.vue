@@ -7,6 +7,7 @@ const props = defineProps<{
   imageUrl: string
   latex: string
   isPdf?: boolean
+  pdfFile?: File
 }>()
 
 const emit = defineEmits<{
@@ -17,8 +18,9 @@ const { exportTex } = useExport()
 
 const code = ref(props.latex)
 const copied = ref(false)
-const activeTab = ref<'preview' | 'source'>('source')
+const activeTab = ref<'preview' | 'source'>('preview')
 const slideIn = ref(false)
+const pdfDataUrl = ref('')
 
 function escapeHtml(value: string): string {
   return value
@@ -33,6 +35,11 @@ onMounted(() => {
   setTimeout(() => {
     slideIn.value = true
   }, 50)
+  
+  // Create object URL for PDF if provided
+  if (props.isPdf && props.pdfFile) {
+    pdfDataUrl.value = URL.createObjectURL(props.pdfFile)
+  }
 })
 
 watch(
@@ -43,9 +50,8 @@ watch(
 )
 
 /**
- * Extract math expressions from LaTeX source and render them with KaTeX.
- * Handles both display math (\\[...\\], $$...$$, align/equation envs)
- * and inline math ($...$), plus renders plain text sections.
+ * Render a clean, Overleaf-style preview of the LaTeX document.
+ * Properly handles sections, math, and text content.
  */
 const renderedPreview = computed(() => {
   let src = code.value
@@ -57,48 +63,113 @@ const renderedPreview = computed(() => {
     return token
   }
 
-  // Strip preamble — only render the document body
+  // Extract document body
   const beginDoc = src.indexOf('\\begin{document}')
   const endDoc = src.indexOf('\\end{document}')
   if (beginDoc !== -1 && endDoc !== -1) {
     src = src.slice(beginDoc + '\\begin{document}'.length, endDoc).trim()
   }
 
-  // Replace \section{...} with styled headings
-  src = src.replace(/\\section\{([^}]*)\}/g, (_m, title) => insertSafeBlock(`<h2 class="text-lg font-bold mt-6 mb-2 text-foreground">${escapeHtml(title)}</h2>`))
-  src = src.replace(/\\subsection\{([^}]*)\}/g, (_m, title) => insertSafeBlock(`<h3 class="text-md font-semibold mt-4 mb-1 text-foreground">${escapeHtml(title)}</h3>`))
+  // Handle sections and subsections FIRST
+  src = src.replace(/\\section\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h2 class="text-2xl font-bold mt-8 mb-4 text-foreground">${escapeHtml(title)}</h2>`)
+  )
+  src = src.replace(/\\subsection\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h3 class="text-xl font-semibold mt-6 mb-3 text-foreground">${escapeHtml(title)}</h3>`)
+  )
+  src = src.replace(/\\subsubsection\{([^}]*)\}/g, (_m, title) => 
+    insertSafeBlock(`<h4 class="text-lg font-medium mt-4 mb-2 text-foreground/90">${escapeHtml(title)}</h4>`)
+  )
 
-  // Render display math: \[...\] and $$...$$
+  // Handle display math environments BEFORE inline math
   src = src.replace(/\\\[([\s\S]*?)\\\]/g, (_m, tex) => {
     try {
-      return insertSafeBlock(`<div class="my-4 overflow-x-auto">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false, output: 'htmlAndMathml' })}</div>`)
-    } catch { return insertSafeBlock(`<pre class="text-destructive">${escapeHtml(tex)}</pre>`) }
+      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
+    } catch { 
+      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
+    }
   })
+  
   src = src.replace(/\$\$([\s\S]*?)\$\$/g, (_m, tex) => {
     try {
-      return insertSafeBlock(`<div class="my-4 overflow-x-auto">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false, output: 'htmlAndMathml' })}</div>`)
-    } catch { return insertSafeBlock(`<pre class="text-destructive">${escapeHtml(tex)}</pre>`) }
+      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
+    } catch { 
+      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
+    }
   })
 
-  // Render align / equation environments
-  src = src.replace(/\\begin\{(align\*?|equation\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, _env, tex) => {
+  // Handle align, equation environments
+  src = src.replace(/\\begin\{(align\*?|equation\*?|gather\*?)\}([\s\S]*?)\\end\{\1\}/g, (_m, _env, tex) => {
     try {
-      return insertSafeBlock(`<div class="my-4 overflow-x-auto">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false, output: 'htmlAndMathml' })}</div>`)
-    } catch { return insertSafeBlock(`<pre class="text-destructive">${escapeHtml(tex)}</pre>`) }
+      return insertSafeBlock(`<div class="my-6 overflow-x-auto flex justify-center">${katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false })}</div>`)
+    } catch { 
+      return insertSafeBlock(`<div class="my-6 p-4 bg-destructive/10 text-destructive rounded font-mono text-sm overflow-x-auto">${escapeHtml(tex)}</div>`) 
+    }
   })
 
-  // Render inline math: $...$
+  // Handle inline math - CRITICAL: Do this before escaping HTML
   src = src.replace(/\$([^$]+?)\$/g, (_m, tex) => {
     try {
-      return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false, output: 'htmlAndMathml' }))
-    } catch { return insertSafeBlock(`<code class="text-destructive">${escapeHtml(tex)}</code>`) }
+      return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
+    } catch { 
+      return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
+    }
   })
 
+  // Handle itemize/enumerate - process items recursively to catch nested math
+  src = src.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_m, items) => {
+    const processedItems = items.split('\\item').filter((item: string) => item.trim()).map((item: string) => {
+      let processedItem = item.trim()
+      // Process any remaining inline math in list items
+      processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
+        try {
+          return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
+        } catch { 
+          return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
+        }
+      })
+      return `<li class="ml-6 mb-2">${processedItem}</li>`
+    }).join('')
+    return insertSafeBlock(`<ul class="list-disc my-4">${processedItems}</ul>`)
+  })
+  
+  src = src.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_m, items) => {
+    const processedItems = items.split('\\item').filter((item: string) => item.trim()).map((item: string) => {
+      let processedItem = item.trim()
+      // Process any remaining inline math in list items
+      processedItem = processedItem.replace(/\$([^$]+?)\$/g, (_m2: string, tex: string) => {
+        try {
+          return insertSafeBlock(katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }))
+        } catch { 
+          return insertSafeBlock(`<span class="text-destructive font-mono text-sm">${escapeHtml(tex)}</span>`) 
+        }
+      })
+      return `<li class="ml-6 mb-2">${processedItem}</li>`
+    }).join('')
+    return insertSafeBlock(`<ol class="list-decimal my-4">${processedItems}</ol>`)
+  })
+
+  // Handle common LaTeX text commands BEFORE escaping
+  src = src.replace(/\\textbf\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<strong>${escapeHtml(text)}</strong>`))
+  src = src.replace(/\\textit\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
+  src = src.replace(/\\emph\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<em>${escapeHtml(text)}</em>`))
+  src = src.replace(/\\texttt\{([^}]*)\}/g, (_m, text) => insertSafeBlock(`<code class="font-mono text-sm">${escapeHtml(text)}</code>`))
+  
+  // Escape remaining HTML
   src = escapeHtml(src)
 
-  // Convert newlines to <br> for remaining text
-  src = src.replace(/\n{2,}/g, '<br/><br/>')
+  // Convert paragraphs
+  const paragraphs = src.split(/\n\s*\n/)
+  src = paragraphs.map(p => {
+    const trimmed = p.trim()
+    if (!trimmed) return ''
+    const text = trimmed.replace(/\n/g, ' ')
+    return `<p class="mb-4 text-base leading-relaxed">${text}</p>`
+  }).join('')
+  
+  // Restore safe blocks
   src = src.replace(/@@SAFE_BLOCK_(\d+)@@/g, (_m, idx) => safeBlocks[Number(idx)] ?? '')
+  
   return src
 })
 
@@ -129,54 +200,62 @@ async function handleDownload() {
 <template>
   <div
     :class="[
-      'flex w-full max-w-6xl flex-col gap-4 transition-all duration-700 lg:flex-row',
+      'flex w-full h-[calc(100vh-200px)] max-w-7xl flex-col gap-4 transition-all duration-700 lg:flex-row',
       slideIn ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
     ]"
   >
     <!-- Left panel: Original Image -->
     <div
       :class="[
-        'flex-1 overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-100',
+        'flex-1 flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-100',
         slideIn ? 'translate-x-0 opacity-100' : '-translate-x-12 opacity-0',
       ]"
     >
-      <div class="flex items-center gap-2 border-b border-border px-5 py-3">
+      <div class="flex items-center gap-2 border-b border-border px-5 py-3 flex-shrink-0">
         <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7Z" /><circle cx="12" cy="12" r="3" />
         </svg>
         <span class="text-sm font-medium text-foreground">Original</span>
       </div>
-      <div class="flex items-center justify-center bg-[hsl(var(--background)/0.5)] p-6">
-        <!-- PDF placeholder -->
-        <div v-if="props.isPdf" class="flex flex-col items-center gap-3 py-12">
-          <svg class="h-20 w-20 text-primary/50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="flex-1 flex items-center justify-center bg-[hsl(var(--background)/0.5)] p-6 overflow-auto">
+        <!-- PDF viewer -->
+        <iframe
+          v-if="props.isPdf && pdfDataUrl"
+          :src="pdfDataUrl"
+          class="w-full h-full rounded-lg border border-border/50"
+          title="Original PDF"
+        />
+        <!-- Image preview -->
+        <img
+          v-else-if="!props.isPdf && props.imageUrl"
+          :src="props.imageUrl"
+          alt="Original handwritten notes"
+          class="max-h-full w-full rounded-lg object-contain"
+        />
+        <!-- Fallback placeholder -->
+        <div v-else class="flex flex-col items-center gap-3 py-12">
+          <svg class="h-32 w-32 text-primary/50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="16" y1="13" x2="8" y2="13" />
             <line x1="16" y1="17" x2="8" y2="17" />
             <line x1="10" y1="9" x2="8" y2="9" />
           </svg>
-          <span class="text-sm font-medium text-muted-foreground">PDF Document</span>
+          <span class="text-base font-medium text-muted-foreground">{{ props.isPdf ? 'PDF Document' : 'Document' }}</span>
+          <p class="text-sm text-muted-foreground/70">Original content converted to LaTeX</p>
         </div>
-        <!-- Image preview -->
-        <img
-          v-else
-          :src="props.imageUrl"
-          alt="Original handwritten notes"
-          class="max-h-[400px] w-full rounded-lg object-contain"
-        />
       </div>
     </div>
 
     <!-- Right panel: LaTeX -->
     <div
       :class="[
-        'flex-1 overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-200',
+        'flex-1 flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-700 delay-200',
         slideIn ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0',
       ]"
     >
       <!-- Tab header -->
-      <div class="flex items-center justify-between border-b border-border px-5 py-3">
+      <div class="flex items-center justify-between border-b border-border px-5 py-3 flex-shrink-0">
         <div class="flex gap-1">
           <button
             type="button"
@@ -212,20 +291,20 @@ async function handleDownload() {
       </div>
 
       <!-- Content -->
-      <div class="relative min-h-[300px]">
+      <div class="flex-1 relative overflow-hidden">
         <textarea
           v-if="activeTab === 'source'"
           v-model="code"
-          class="h-full min-h-[300px] w-full resize-none bg-transparent p-5 font-mono text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
+          class="h-full w-full resize-none bg-transparent p-6 font-mono text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
           spellcheck="false"
         />
-        <div v-else class="p-5">
-          <div class="rounded-lg bg-secondary/50 p-6 overflow-auto max-h-[500px] katex-preview" v-html="renderedPreview" />
+        <div v-else class="h-full overflow-y-auto bg-white text-black">
+          <div class="max-w-4xl mx-auto p-8 latex-document-preview" v-html="renderedPreview" />
         </div>
       </div>
 
       <!-- Action bar -->
-      <div class="flex items-center justify-between border-t border-border px-5 py-3">
+      <div class="flex items-center justify-between border-t border-border px-5 py-3 flex-shrink-0">
         <span class="text-xs text-muted-foreground">{{ code.length }} characters</span>
         <div class="flex gap-2">
           <button

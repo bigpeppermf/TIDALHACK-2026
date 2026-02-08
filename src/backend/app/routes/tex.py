@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.deps import get_current_user, get_db
 from app.db import crud
+from app.db.models import User
 
 router = APIRouter()
-
 
 
 # LIST RECENT TEX FILES
@@ -16,13 +16,11 @@ router = APIRouter()
 def list_tex_files(
     limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    # TEMP: replaced by OAuth later
-    user_id = "mock-user-id"
-
     files = crud.get_recent_tex_files(
         db=db,
-        user_id=user_id,
+        user_id=user.id,
         limit=limit
     )
 
@@ -44,12 +42,11 @@ def list_tex_files(
 def get_tex_file(
     tex_id: str,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    user_id = "mock-user-id"
-
     tex_file = crud.get_tex_file_by_id(
         db=db,
-        user_id=user_id,
+        user_id=user.id,
         tex_id=tex_id
     )
 
@@ -73,9 +70,8 @@ def get_tex_file(
 def create_tex_file(
     payload: dict,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    user_id = "mock-user-id"
-
     filename = payload.get("filename")
     latex = payload.get("latex")
 
@@ -87,7 +83,7 @@ def create_tex_file(
 
     tex_file = crud.create_tex_file(
         db=db,
-        user_id=user_id,
+        user_id=user.id,
         filename=filename,
         latex=latex
     )
@@ -108,12 +104,11 @@ def update_tex_file(
     tex_id: str,
     payload: dict,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    user_id = "mock-user-id"
-
     tex_file = crud.get_tex_file_by_id(
         db=db,
-        user_id=user_id,
+        user_id=user.id,
         tex_id=tex_id
     )
 
@@ -151,12 +146,11 @@ def update_tex_file(
 def download_tex_file(
     tex_id: str,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    user_id = "mock-user-id"
-
     tex_file = crud.get_tex_file_by_id(
         db=db,
-        user_id=user_id,
+        user_id=user.id,
         tex_id=tex_id
     )
 

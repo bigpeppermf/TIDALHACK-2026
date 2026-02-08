@@ -7,7 +7,7 @@ const steps = [
     step: '01',
     title: 'Upload Your Notes',
     description:
-      'Take a photo or scan of your handwritten notes and drag it into ScribeTeX. We support JPEG, PNG, and WebP.',
+      'Take a photo or scan of your handwritten notes and drag it into monograph. We support JPEG, PNG, and WebP.',
   },
   {
     iconPath: 'M6.5 6.5h11v11h-11zM12 2v4M12 18v4M2 12h4M18 12h4',

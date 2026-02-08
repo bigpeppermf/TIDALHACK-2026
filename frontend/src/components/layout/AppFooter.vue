@@ -10,9 +10,9 @@ import { RouterLink } from 'vue-router'
       <!-- Logo -->
       <div class="flex items-center gap-2">
         <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-          <span class="font-mono text-xs font-bold text-primary-foreground">S</span>
+          <span class="font-mono text-xs font-bold text-primary-foreground">m</span>
         </div>
-        <span class="text-sm font-semibold text-foreground">ScribeTeX</span>
+        <span class="text-sm font-semibold text-foreground">monograph</span>
       </div>
 
       <!-- Links -->

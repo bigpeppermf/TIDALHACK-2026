@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Button } from '@/components/ui/button'
 
 const mobileOpen = ref(false)
 
 const navLinks = [
+  { label: 'Home', to: '/' },
   { label: 'Features', href: '#features' },
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Dashboard', to: '/dashboard' },
@@ -13,131 +15,97 @@ const navLinks = [
 </script>
 
 <template>
-  <header
-    class="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-[hsl(var(--background)/0.8)] backdrop-blur-xl"
-  >
-    <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-      <!-- Logo -->
-      <RouterLink to="/" class="flex items-center gap-2">
-        <div
-          class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary"
-        >
-          <span class="font-mono text-sm font-bold text-primary-foreground">S</span>
-        </div>
-        <span class="text-lg font-semibold tracking-tight text-foreground">
-          ScribeTeX
-        </span>
+  <header class="pointer-events-none fixed inset-0 z-50">
+    <div class="pointer-events-auto absolute top-4 right-4">
+      <Button as-child size="sm">
+        <RouterLink to="/convert">Login</RouterLink>
+      </Button>
+    </div>
+
+    <aside
+      class="pointer-events-auto absolute right-4 top-16 hidden h-[calc(100vh-5rem)] w-16 flex-col items-center justify-between rounded-xl border border-border/60 bg-[hsl(var(--background)/0.75)] py-4 backdrop-blur-xl md:flex"
+      aria-label="Right navigation"
+    >
+      <RouterLink
+        to="/"
+        class="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 text-sm font-semibold text-foreground"
+        aria-label="monograph home"
+      >
+        m
       </RouterLink>
 
-      <!-- Desktop links -->
-      <div class="hidden items-center gap-8 md:flex">
+      <nav class="flex flex-col items-center gap-3">
         <template v-for="link in navLinks" :key="link.label">
-          <a
-            v-if="link.href"
-            :href="link.href"
-            class="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <a v-if="link.href" :href="link.href" class="vertical-nav-link">
             {{ link.label }}
           </a>
-          <RouterLink
-            v-else
-            :to="link.to!"
-            class="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <RouterLink v-else :to="link.to!" class="vertical-nav-link">
             {{ link.label }}
           </RouterLink>
         </template>
-      </div>
+      </nav>
 
-      <!-- CTA -->
-      <div class="hidden items-center gap-3 md:flex">
-        <RouterLink
-          to="/convert"
-          class="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Sign In
+      <span class="rotate-180 text-[10px] tracking-[0.35em] text-muted-foreground [writing-mode:vertical-rl]">
+        monograph
+      </span>
+    </aside>
+
+    <div class="pointer-events-auto border-b border-border/40 bg-[hsl(var(--background)/0.82)] px-4 py-3 backdrop-blur-xl md:hidden">
+      <div class="flex items-center justify-between gap-3">
+        <RouterLink to="/" class="text-sm font-semibold tracking-wide text-foreground">
+          monograph
         </RouterLink>
-        <RouterLink
-          to="/convert"
-          class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"
-        >
-          Get Started
-        </RouterLink>
-      </div>
-
-      <!-- Mobile toggle -->
-      <button
-        type="button"
-        class="text-foreground md:hidden"
-        :aria-label="mobileOpen ? 'Close menu' : 'Open menu'"
-        @click="mobileOpen = !mobileOpen"
-      >
-        <svg
-          v-if="!mobileOpen"
-          class="h-5 w-5"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-        <svg
-          v-else
-          class="h-5 w-5"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
-    </nav>
-
-    <!-- Mobile menu -->
-    <div
-      v-if="mobileOpen"
-      class="border-t border-border/50 bg-[hsl(var(--background)/0.95)] backdrop-blur-xl md:hidden"
-    >
-      <div class="flex flex-col gap-1 px-6 py-4">
-        <template v-for="link in navLinks" :key="link.label">
-          <a
-            v-if="link.href"
-            :href="link.href"
-            class="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            @click="mobileOpen = false"
+        <div class="flex items-center gap-2">
+          <Button as-child size="sm">
+            <RouterLink to="/convert">Login</RouterLink>
+          </Button>
+          <button
+            type="button"
+            class="rounded-md border border-border px-2 py-1 text-xs text-foreground"
+            :aria-label="mobileOpen ? 'Close menu' : 'Open menu'"
+            @click="mobileOpen = !mobileOpen"
           >
-            {{ link.label }}
-          </a>
-          <RouterLink
-            v-else
-            :to="link.to!"
-            class="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            @click="mobileOpen = false"
-          >
-            {{ link.label }}
-          </RouterLink>
-        </template>
-        <div class="mt-3 flex flex-col gap-2">
-          <RouterLink
-            to="/convert"
-            class="px-3 py-2 text-sm text-muted-foreground"
-            @click="mobileOpen = false"
-          >
-            Sign In
-          </RouterLink>
-          <RouterLink
-            to="/convert"
-            class="rounded-md bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-            @click="mobileOpen = false"
-          >
-            Get Started
-          </RouterLink>
+            Menu
+          </button>
         </div>
+      </div>
+
+      <div v-if="mobileOpen" class="mt-3 flex flex-wrap gap-2 pb-1">
+        <template v-for="link in navLinks" :key="`mobile-${link.label}`">
+          <a
+            v-if="link.href"
+            :href="link.href"
+            class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+            @click="mobileOpen = false"
+          >
+            {{ link.label }}
+          </a>
+          <RouterLink
+            v-else
+            :to="link.to!"
+            class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+            @click="mobileOpen = false"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </template>
       </div>
     </div>
   </header>
 </template>
+
+<style scoped>
+.vertical-nav-link {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.18em;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.2s ease;
+}
+
+.vertical-nav-link:hover {
+  color: hsl(var(--foreground));
+}
+</style>

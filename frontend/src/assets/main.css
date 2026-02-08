@@ -1,48 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 240 10% 3.9%;
+  --background: 0 0% 0%;
   --foreground: 0 0% 95%;
-  --card: 240 6% 6%;
+  --card: 0 0% 4%;
   --card-foreground: 0 0% 95%;
-  --popover: 240 6% 6%;
+  --popover: 0 0% 4%;
   --popover-foreground: 0 0% 95%;
-  --primary: 168 80% 50%;
-  --primary-foreground: 240 10% 3.9%;
-  --secondary: 240 4% 12%;
+  --primary: 270 70% 72%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 270 8% 12%;
   --secondary-foreground: 0 0% 90%;
-  --muted: 240 4% 12%;
-  --muted-foreground: 240 5% 55%;
-  --accent: 168 80% 50%;
-  --accent-foreground: 240 10% 3.9%;
+  --muted: 270 6% 12%;
+  --muted-foreground: 270 5% 55%;
+  --accent: 270 70% 72%;
+  --accent-foreground: 0 0% 0%;
   --destructive: 0 63% 31%;
   --destructive-foreground: 0 0% 95%;
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 168 80% 50%;
-  --chart-1: 168 80% 50%;
-  --chart-2: 160 60% 45%;
+  --border: 270 4% 16%;
+  --input: 270 4% 16%;
+  --ring: 270 70% 72%;
+  --chart-1: 270 70% 72%;
+  --chart-2: 280 60% 65%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
   --radius: 0.625rem;
-  --sidebar-background: 240 6% 6%;
+  --sidebar-background: 0 0% 4%;
   --sidebar-foreground: 0 0% 95%;
-  --sidebar-primary: 168 80% 50%;
-  --sidebar-primary-foreground: 240 10% 3.9%;
-  --sidebar-accent: 240 4% 12%;
+  --sidebar-primary: 270 70% 72%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 270 6% 12%;
   --sidebar-accent-foreground: 0 0% 95%;
-  --sidebar-border: 240 4% 16%;
-  --sidebar-ring: 168 80% 50%;
+  --sidebar-border: 270 4% 16%;
+  --sidebar-ring: 270 70% 72%;
 }
 
 @theme inline {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: 'NBAkademieProMono400', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -100,14 +99,14 @@
 }
 
 .bg-grid-pattern {
-  background-image: radial-gradient(circle, hsl(240 4% 20%) 1px, transparent 1px);
+  background-image: radial-gradient(circle, hsl(270 4% 15%) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .glow-teal {
-  box-shadow: 0 0 60px 10px hsla(168, 80%, 50%, 0.08);
+  box-shadow: 0 0 60px 10px hsla(270, 70%, 72%, 0.08);
 }
 
 .glow-line {
-  background: linear-gradient(90deg, transparent, hsl(168 80% 50% / 0.3), transparent);
+  background: linear-gradient(90deg, transparent, hsl(270 70% 72% / 0.3), transparent);
 }

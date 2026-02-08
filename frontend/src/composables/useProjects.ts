@@ -105,6 +105,21 @@ function persistProjects() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projectsState.value))
 }
 
+function adoptLegacyProjectsForOwner(owner: string): void {
+  let changed = false
+  projectsState.value = projectsState.value.map((project) => {
+    if (project.ownerId === null || project.ownerId === undefined) {
+      changed = true
+      return { ...project, ownerId: owner }
+    }
+    return project
+  })
+
+  if (changed) {
+    persistProjects()
+  }
+}
+
 function listItemToProject(item: TexListItem): ProjectRecord {
   return {
     id: item.id,
@@ -210,6 +225,15 @@ export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined
     const explicit = toValue(ownerId)
     return explicit ?? clerkUserId.value ?? null
   })
+
+  watch(
+    resolvedOwnerId,
+    (nextOwnerId) => {
+      if (!nextOwnerId) return
+      adoptLegacyProjectsForOwner(nextOwnerId)
+    },
+    { immediate: true },
+  )
 
   const projects = computed(() => {
     if (!resolvedOwnerId.value) return []

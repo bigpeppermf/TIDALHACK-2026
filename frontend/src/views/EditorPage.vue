@@ -33,6 +33,20 @@ type EditorFileItem = {
   active?: boolean
 }
 
+type PendingEditorDraft = {
+  latex: string
+  name?: string
+  sourceFilename?: string
+}
+
+const PENDING_EDITOR_DRAFT_KEY = 'monogram-editor-pending-draft'
+const EDITOR_LAST_TARGET_KEY = 'monogram-editor-last-target'
+
+type PendingEditorTarget = {
+  projectId?: string
+  draft?: PendingEditorDraft
+}
+
 const route = useRoute()
 const router = useRouter()
 const { isLoaded, isSignedIn, userId } = useAuth()
@@ -302,6 +316,43 @@ const routeProjectId = computed(() => {
   const raw = route.query.projectId
   return typeof raw === 'string' && raw ? raw : null
 })
+const routeWantsDraft = computed(() => route.query.draft === '1')
+
+function consumePendingEditorDraft(): PendingEditorDraft | null {
+  if (typeof window === 'undefined') return null
+  const raw = window.sessionStorage.getItem(PENDING_EDITOR_DRAFT_KEY)
+  if (!raw) return null
+
+  window.sessionStorage.removeItem(PENDING_EDITOR_DRAFT_KEY)
+  try {
+    const parsed = JSON.parse(raw) as PendingEditorDraft
+    if (!parsed?.latex || typeof parsed.latex !== 'string') {
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function consumePendingEditorTarget(): PendingEditorTarget | null {
+  if (typeof window === 'undefined') return null
+  const raw = window.sessionStorage.getItem(EDITOR_LAST_TARGET_KEY)
+  if (!raw) return null
+
+  window.sessionStorage.removeItem(EDITOR_LAST_TARGET_KEY)
+  try {
+    const parsed = JSON.parse(raw) as PendingEditorTarget
+    if (!parsed || typeof parsed !== 'object') return null
+    if (parsed.projectId && typeof parsed.projectId !== 'string') return null
+    if (parsed.draft && typeof parsed.draft?.latex !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+const pendingEditorTarget = ref<PendingEditorTarget | null>(consumePendingEditorTarget())
 
 const editorFiles = computed<EditorFileItem[]>(() => {
   if (!projectFilesMetadata.value || projectFilesMetadata.value.length === 0) {
@@ -567,6 +618,34 @@ async function hydrateFromProject(projectId: string | null) {
   isHydrating.value = true
 
   if (!project) {
+    const pendingDraft = pendingEditorTarget.value?.draft ?? consumePendingEditorDraft()
+    if (pendingDraft) {
+      pendingEditorTarget.value = null
+      currentProjectId.value = null
+      currentProjectName.value = pendingDraft.name?.trim() || 'Unsaved conversion'
+      currentSourceFilename.value = pendingDraft.sourceFilename ?? null
+      activeFilePath.value = null
+      projectFilesMetadata.value = null
+      code.value = pendingDraft.latex
+      compiledCode.value = pendingDraft.latex
+      compileState.value = 'dirty'
+      compileErrorMessage.value = ''
+      compiledPdfData.value = null
+      saveState.value = 'idle'
+      isHydrating.value = false
+
+      if (routeWantsDraft.value) {
+        void router.replace({
+          path: '/editor',
+          query: {
+            ...route.query,
+            draft: undefined,
+          },
+        })
+      }
+      return
+    }
+
     currentProjectId.value = null
     currentProjectName.value = 'Untitled project'
     currentSourceFilename.value = null
@@ -583,6 +662,7 @@ async function hydrateFromProject(projectId: string | null) {
   }
 
   currentProjectId.value = project.id
+  pendingEditorTarget.value = null
   currentProjectName.value = project.name
   currentSourceFilename.value = project.sourceFilename ?? null
   compileErrorMessage.value = ''
@@ -673,7 +753,9 @@ function flushPendingSave() {
 }
 
 const resolvedProjectId = computed(() => {
+  if (routeWantsDraft.value) return null
   if (routeProjectId.value) return routeProjectId.value
+  if (pendingEditorTarget.value?.projectId) return pendingEditorTarget.value.projectId
   const latestRemote = projects.value.find((project) => !project.id.startsWith('local-'))
   return latestRemote?.id ?? projects.value[0]?.id ?? null
 })

@@ -25,6 +25,8 @@ const uploadedFile = ref<File | null>(null)
 const latestProjectId = ref<string | null>(null)
 const remoteSaveWarning = ref('')
 const remoteSaveBusy = ref(false)
+const PENDING_EDITOR_DRAFT_KEY = 'monogram-editor-pending-draft'
+const EDITOR_LAST_TARGET_KEY = 'monogram-editor-last-target'
 
 const allStages: ('upload' | 'loading' | 'result')[] = ['upload', 'loading', 'result']
 
@@ -46,17 +48,36 @@ async function handleFileAccepted(file: File) {
   try {
     const res = await convert(file)
     latexOutput.value = res.latex
-    const project = await addConvertedProject({
-      name: file.name,
-      latex: res.latex,
-      sourceFilename: file.name,
-      sourceKind: isPdf.value ? 'pdf' : 'image',
-      ownerId: userId.value ?? null,
-    })
-    latestProjectId.value = project.id
-    remoteSaveWarning.value = project.id.startsWith('local-')
-      ? 'Cloud save failed. Retry save to enable PDF compile in editor.'
-      : ''
+
+    try {
+      const project = await addConvertedProject({
+        name: file.name,
+        latex: res.latex,
+        sourceFilename: file.name,
+        sourceKind: isPdf.value ? 'pdf' : 'image',
+        ownerId: userId.value ?? null,
+      })
+      latestProjectId.value = project.id
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(EDITOR_LAST_TARGET_KEY, JSON.stringify({ projectId: project.id }))
+      }
+      remoteSaveWarning.value = project.id.startsWith('local-')
+        ? 'Cloud save failed. Retry save to enable PDF compile in editor.'
+        : ''
+    } catch {
+      latestProjectId.value = null
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(EDITOR_LAST_TARGET_KEY, JSON.stringify({
+          draft: {
+            latex: res.latex,
+            name: file.name || 'Untitled conversion',
+            sourceFilename: file.name || 'main.tex',
+          },
+        }))
+      }
+      remoteSaveWarning.value = 'Converted successfully, but cloud save failed. Sign in again to save and export HTML/PDF from editor.'
+    }
+
     stage.value = 'result'
   } catch (error) {
     if (error instanceof Error) {
@@ -118,6 +139,14 @@ async function openEditorForLatest() {
   if (latestProjectId.value?.startsWith('local-')) {
     const saved = await retryRemoteSave()
     if (!saved) {
+      if (latexOutput.value) {
+        sessionStorage.setItem(PENDING_EDITOR_DRAFT_KEY, JSON.stringify({
+          latex: latexOutput.value,
+          name: uploadedFile.value?.name || 'Untitled conversion',
+          sourceFilename: uploadedFile.value?.name || 'main.tex',
+        }))
+        router.push({ path: '/editor', query: { draft: '1' } })
+      }
       return
     }
   }
@@ -126,6 +155,17 @@ async function openEditorForLatest() {
     router.push({ path: '/editor', query: { projectId: latestProjectId.value } })
     return
   }
+
+  if (latexOutput.value) {
+    sessionStorage.setItem(PENDING_EDITOR_DRAFT_KEY, JSON.stringify({
+      latex: latexOutput.value,
+      name: uploadedFile.value?.name || 'Untitled conversion',
+      sourceFilename: uploadedFile.value?.name || 'main.tex',
+    }))
+    router.push({ path: '/editor', query: { draft: '1' } })
+    return
+  }
+
   router.push('/editor')
 }
 

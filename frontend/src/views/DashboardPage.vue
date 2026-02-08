@@ -1,18 +1,35 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { useAuth } from '@clerk/vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import EmptyState from '@/components/dashboard/EmptyState.vue'
 import ProjectRow from '@/components/dashboard/ProjectRow.vue'
-import { useProjects } from '@/composables/useProjects'
+import { AUTH_SESSION_EXPIRED_MESSAGE, useProjects } from '@/composables/useProjects'
 
 const router = useRouter()
-const ownerId = typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id')
-const { projects, ensureRemoteProjectsLoaded } = useProjects(ownerId)
+const { isLoaded, isSignedIn, userId } = useAuth()
+const { projects, ensureRemoteProjectsLoaded } = useProjects(userId)
+const authErrorMessage = ref('')
 
-onMounted(() => {
-  void ensureRemoteProjectsLoaded()
-})
+watch(
+  [isLoaded, isSignedIn],
+  ([loaded, signedIn]) => {
+    if (!loaded) return
+    if (!signedIn) {
+      void router.replace('/')
+      return
+    }
+    void ensureRemoteProjectsLoaded().then(() => {
+      authErrorMessage.value = ''
+    }).catch((error) => {
+      authErrorMessage.value = error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE
+        ? AUTH_SESSION_EXPIRED_MESSAGE
+        : 'Unable to load projects right now.'
+    })
+  },
+  { immediate: true },
+)
 
 function handleUpload() {
   router.push('/convert')
@@ -42,6 +59,7 @@ function handleRetry(_id: string) {
         <div>
           <h1 class="text-3xl font-bold text-foreground">Dashboard</h1>
           <p class="mt-1 text-sm text-muted-foreground">Your recent conversions and projects.</p>
+          <p v-if="authErrorMessage" class="mt-2 text-sm text-destructive">{{ authErrorMessage }}</p>
         </div>
         <button
           class="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"

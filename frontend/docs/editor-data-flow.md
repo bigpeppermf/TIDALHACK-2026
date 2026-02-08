@@ -17,7 +17,7 @@
     - `ownerId` (Clerk-ready, optional)
 
 ## Clerk readiness
-- Current UI reads `clerk-user-id` from `localStorage` when present.
+- Current UI derives identity from Clerk (`useAuth`) and no longer reads `clerk-user-id` from `localStorage`.
 - `useProjects(ownerId)` filters dashboard/editor records per owner.
 - New projects store `ownerId`, so Clerk user scoping can be enabled by setting that value after auth.
 

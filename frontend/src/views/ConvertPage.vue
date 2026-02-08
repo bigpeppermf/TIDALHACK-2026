@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAuth } from '@clerk/vue'
 import { onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
@@ -10,18 +11,17 @@ import { useProjects } from '@/composables/useProjects'
 
 type Stage = 'upload' | 'loading' | 'result' | 'error'
 
+const { userId } = useAuth()
 const { error: convertError, convert, reset: resetConvert } = useConvert()
-const { addConvertedProject } = useProjects()
+const { addConvertedProject } = useProjects(userId)
 const router = useRouter()
 
 const stage = ref<Stage>('upload')
+const stageError = ref<string | null>(null)
 const imageUrl = ref('')
 const isPdf = ref(false)
 const latexOutput = ref('')
 const uploadedFile = ref<File | null>(null)
-const ownerId = ref<string | null>(
-  typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id'),
-)
 const latestProjectId = ref<string | null>(null)
 
 const allStages: ('upload' | 'loading' | 'result')[] = ['upload', 'loading', 'result']
@@ -34,6 +34,7 @@ function revokePreviewUrl() {
 }
 
 async function handleFileAccepted(file: File) {
+  stageError.value = null
   isPdf.value = file.type === 'application/pdf'
   uploadedFile.value = file
   revokePreviewUrl()
@@ -48,11 +49,14 @@ async function handleFileAccepted(file: File) {
       latex: res.latex,
       sourceFilename: file.name,
       sourceKind: isPdf.value ? 'pdf' : 'image',
-      ownerId: ownerId.value,
+      ownerId: userId.value ?? null,
     })
     latestProjectId.value = project.id
     stage.value = 'result'
-  } catch {
+  } catch (error) {
+    if (error instanceof Error) {
+      stageError.value = error.message
+    }
     stage.value = 'error'
   }
 }
@@ -64,6 +68,7 @@ function handleReset() {
   latexOutput.value = ''
   uploadedFile.value = null
   latestProjectId.value = null
+  stageError.value = null
   resetConvert()
 }
 
@@ -154,7 +159,7 @@ onUnmounted(() => {
           </svg>
         </div>
         <h2 class="mb-2 text-xl font-semibold text-foreground">Conversion Failed</h2>
-        <p class="mb-6 text-sm text-muted-foreground">{{ convertError || 'Something went wrong. Please try again.' }}</p>
+        <p class="mb-6 text-sm text-muted-foreground">{{ stageError || convertError || 'Something went wrong. Please try again.' }}</p>
         <button
           type="button"
           class="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-[hsl(var(--primary)/0.9)]"

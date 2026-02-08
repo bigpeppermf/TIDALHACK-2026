@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/vue'
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
@@ -17,9 +18,16 @@ const navLinks = [
 <template>
   <header class="pointer-events-none fixed inset-0 z-50">
     <div class="pointer-events-auto absolute top-4 right-4">
-      <Button as-child size="sm">
-        <RouterLink to="/convert">Login</RouterLink>
-      </Button>
+      <SignedOut>
+        <SignInButton mode="modal">
+          <Button size="sm">
+            Login
+          </Button>
+        </SignInButton>
+      </SignedOut>
+      <SignedIn>
+        <UserButton after-sign-out-url="/" />
+      </SignedIn>
     </div>
 
     <aside
@@ -56,9 +64,16 @@ const navLinks = [
           monogram
         </RouterLink>
         <div class="flex items-center gap-2">
-          <Button as-child size="sm">
-            <RouterLink to="/convert">Login</RouterLink>
-          </Button>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button size="sm">
+                Login
+              </Button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton after-sign-out-url="/" />
+          </SignedIn>
           <button
             type="button"
             class="rounded-md border border-border px-2 py-1 text-xs text-foreground"

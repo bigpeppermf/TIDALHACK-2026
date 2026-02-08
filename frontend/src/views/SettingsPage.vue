@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useAuth } from '@clerk/vue'
+import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 
 const sections = [
@@ -11,12 +13,25 @@ const sections = [
 ]
 
 const activeSection = ref('profile')
+const router = useRouter()
+const { isLoaded, isSignedIn } = useAuth()
 
 const notifications = [
   { label: 'Conversion complete', desc: 'Notify when a conversion finishes', enabled: ref(true) },
   { label: 'Error alerts', desc: 'Get notified when something fails', enabled: ref(true) },
   { label: 'Weekly summary', desc: 'Receive a weekly usage report', enabled: ref(false) },
 ]
+
+watch(
+  [isLoaded, isSignedIn],
+  ([loaded, signedIn]) => {
+    if (!loaded) return
+    if (!signedIn) {
+      void router.replace('/')
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

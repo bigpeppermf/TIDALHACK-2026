@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useAuth } from '@clerk/vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import katex from 'katex'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import LatexEditorPanel from '@/components/convert/LatexEditorPanel.vue'
-import { useProjects, type ProjectFileMeta } from '@/composables/useProjects'
+import { AUTH_SESSION_EXPIRED_MESSAGE, useProjects, type ProjectFileMeta } from '@/composables/useProjects'
 
 const DEFAULT_LATEX = `\\documentclass{article}
 \\usepackage{amsmath}
@@ -33,7 +34,7 @@ type EditorFileItem = {
 
 const route = useRoute()
 const router = useRouter()
-const ownerId = typeof window === 'undefined' ? null : window.localStorage.getItem('clerk-user-id')
+const { isLoaded, isSignedIn, userId } = useAuth()
 const {
   compileProjectPdf,
   ensureRemoteProjectsLoaded,
@@ -42,7 +43,7 @@ const {
   getProjectById,
   projects,
   updateProjectLatex,
-} = useProjects(ownerId)
+} = useProjects(userId)
 
 const code = ref(DEFAULT_LATEX)
 const compiledCode = ref(DEFAULT_LATEX)
@@ -59,11 +60,20 @@ const compileState = ref<CompileState>('compiled')
 const compileErrorMessage = ref('')
 const shareState = ref<ShareState>('idle')
 const compiledPdfData = ref<Uint8Array | null>(null)
+const authErrorMessage = ref('')
 
 const isHydrating = ref(false)
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 let saveStateTimer: ReturnType<typeof setTimeout> | null = null
 let shareTimer: ReturnType<typeof setTimeout> | null = null
+
+function setAuthError(message: string) {
+  authErrorMessage.value = message
+}
+
+function clearAuthError() {
+  authErrorMessage.value = ''
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -284,12 +294,16 @@ async function compilePreview() {
 
   const result = await compileProjectPdf(currentProjectId.value)
   if (result.ok) {
+    clearAuthError()
     compiledPdfData.value = result.pdfData
     compiledCode.value = code.value
     compileState.value = 'compiled'
     return
   }
 
+  if (result.error === AUTH_SESSION_EXPIRED_MESSAGE) {
+    setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+  }
   compiledPdfData.value = null
   compileState.value = 'error'
   compileErrorMessage.value = result.error
@@ -313,9 +327,13 @@ async function hydrateProjectFiles(projectId: string | null) {
 
   try {
     const files = await fetchProjectFiles(projectId)
+    clearAuthError()
     projectFilesMetadata.value = files
     activeFilePath.value = pickInitialActiveFile(files)
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
     projectFilesMetadata.value = null
     activeFilePath.value = null
   }
@@ -334,7 +352,16 @@ function handleUpdateEditorValue(nextValue: string) {
 
 async function hydrateFromProject(projectId: string | null) {
   const direct = projectId ? getProjectById(projectId) : undefined
-  const fetched = projectId && (!direct || !direct.latex) ? await fetchProjectById(projectId) : undefined
+  let fetched
+  try {
+    fetched = projectId && (!direct || !direct.latex) ? await fetchProjectById(projectId) : undefined
+    clearAuthError()
+  } catch (error) {
+    if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
+    fetched = undefined
+  }
   const fallback = !direct && !fetched ? projects.value[0] : undefined
   const project = direct ?? fetched ?? fallback
 
@@ -382,7 +409,16 @@ async function hydrateFromProject(projectId: string | null) {
 
 async function runSave(projectId: string, latex: string) {
   saveState.value = 'saving'
-  const ok = await updateProjectLatex(projectId, latex)
+  let ok = false
+  try {
+    ok = await updateProjectLatex(projectId, latex)
+    clearAuthError()
+  } catch (error) {
+    if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+      setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
+    ok = false
+  }
 
   if (projectId !== currentProjectId.value) {
     return
@@ -438,9 +474,26 @@ watch(code, (nextCode) => {
   scheduleSave(nextCode)
 })
 
-onMounted(() => {
-  void ensureRemoteProjectsLoaded()
-})
+watch(
+  [isLoaded, isSignedIn],
+  ([loaded, signedIn]) => {
+    if (!loaded) return
+    if (!signedIn) {
+      void router.replace('/')
+      return
+    }
+    void ensureRemoteProjectsLoaded().then(() => {
+      clearAuthError()
+    }).catch((error) => {
+      if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+        setAuthError(AUTH_SESSION_EXPIRED_MESSAGE)
+        return
+      }
+      setAuthError('Unable to load project data right now.')
+    })
+  },
+  { immediate: true },
+)
 
 async function handleCopy() {
   await navigator.clipboard.writeText(visibleCode.value)
@@ -510,6 +563,7 @@ onUnmounted(() => {
     <AppNavbar />
 
     <section class="h-screen px-3 pb-3 pt-20 md:px-5">
+      <p v-if="authErrorMessage" class="mx-auto mb-3 max-w-[1500px] text-sm text-destructive">{{ authErrorMessage }}</p>
       <div class="mx-auto h-full max-w-[1500px] overflow-hidden rounded-2xl border border-border bg-card">
         <LatexEditorPanel
           :model-value="visibleCode"

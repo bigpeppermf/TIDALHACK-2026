@@ -1,8 +1,11 @@
-import { computed, ref } from 'vue'
+import { useAuth } from '@clerk/vue'
+import { computed, ref, toValue, watch } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
 import type { AddConvertedProjectInput, ProjectRecord } from '@/types/project'
 
 const STORAGE_KEY = 'monogram-projects'
 const API_BASE = '/api/tex'
+export const AUTH_SESSION_EXPIRED_MESSAGE = 'Your session expired. Please sign in again.'
 
 interface TexListItem {
   id: string
@@ -157,14 +160,60 @@ function normalizeProjectFileKind(kind: string): ProjectFileMeta['kind'] {
   return 'asset'
 }
 
-export function useProjects(ownerId?: string | null) {
-  const projects = computed(() => {
-    if (!ownerId) return projectsState.value
-    return projectsState.value.filter((project) => project.ownerId === ownerId)
+function isAuthStatus(status: number): boolean {
+  return status === 401 || status === 403
+}
+
+export function useProjects(ownerId?: MaybeRefOrGetter<string | null | undefined>) {
+  const clerkGetToken = ref<(() => Promise<string | null>) | null>(null)
+  const clerkUserId = ref<string | null>(null)
+
+  try {
+    const auth = useAuth()
+    watch(
+      () => toValue(auth.getToken as unknown as MaybeRefOrGetter<(() => Promise<string | null>) | undefined>),
+      (next) => {
+        clerkGetToken.value = next ?? null
+      },
+      { immediate: true },
+    )
+    watch(
+      () => toValue(auth.userId as unknown as MaybeRefOrGetter<string | null | undefined>),
+      (next) => {
+        clerkUserId.value = next ?? null
+      },
+      { immediate: true },
+    )
+  } catch {
+    clerkGetToken.value = null
+  }
+
+  const resolvedOwnerId = computed(() => {
+    const explicit = toValue(ownerId)
+    return explicit ?? clerkUserId.value ?? null
   })
 
+  const projects = computed(() => {
+    if (!resolvedOwnerId.value) return []
+    return projectsState.value.filter((project) => project.ownerId === resolvedOwnerId.value)
+  })
+
+  async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+    const headers = new Headers(init?.headers)
+    if (clerkGetToken.value) {
+      const token = await clerkGetToken.value()
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`)
+      }
+    }
+    return fetch(url, { ...init, headers })
+  }
+
   async function fetchRecentProjects(limit = 25): Promise<void> {
-    const response = await fetch(`${API_BASE}?limit=${limit}`)
+    const response = await authFetch(`${API_BASE}?limit=${limit}`)
+    if (isAuthStatus(response.status)) {
+      throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
+    }
     if (!response.ok) {
       throw new Error('Failed to fetch recent tex files')
     }
@@ -173,7 +222,10 @@ export function useProjects(ownerId?: string | null) {
       throw new Error('Unexpected tex list payload')
     }
 
-    const mapped = data.map(listItemToProject)
+    const mapped = data.map((item) => ({
+      ...listItemToProject(item),
+      ownerId: resolvedOwnerId.value,
+    }))
     const detailsById = new Map(projectsState.value.map((project) => [project.id, project]))
     const merged = mapped.map((project) => {
       const existing = detailsById.get(project.id)
@@ -181,8 +233,11 @@ export function useProjects(ownerId?: string | null) {
         ? { ...project, latex: existing.latex, updatedAt: existing.updatedAt, updatedAtIso: existing.updatedAtIso }
         : project
     })
+    const localDrafts = projectsState.value.filter((project) => {
+      return project.id.startsWith('local-') && project.ownerId === resolvedOwnerId.value
+    })
 
-    projectsState.value = merged
+    projectsState.value = [...merged, ...localDrafts]
     persistProjects()
   }
 
@@ -203,16 +258,22 @@ export function useProjects(ownerId?: string | null) {
   }
 
   async function fetchProjectById(id: string): Promise<ProjectRecord | undefined> {
-    const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}`)
+    const response = await authFetch(`${API_BASE}/${encodeURIComponent(id)}`)
     if (response.status === 404) {
       return undefined
+    }
+    if (isAuthStatus(response.status)) {
+      throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
     }
     if (!response.ok) {
       throw new Error('Failed to fetch tex file details')
     }
 
     const detail = (await response.json()) as TexDetail
-    const mapped = detailToProject(detail)
+    const mapped = {
+      ...detailToProject(detail),
+      ownerId: resolvedOwnerId.value,
+    }
     upsertProject(mapped)
     return mapped
   }
@@ -224,13 +285,18 @@ export function useProjects(ownerId?: string | null) {
     }
 
     try {
-      const response = await fetch(API_BASE, {
+      const response = await authFetch(API_BASE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
+        if (isAuthStatus(response.status)) {
+          throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
+        }
         throw new Error('Failed to create tex file')
       }
 
@@ -245,11 +311,14 @@ export function useProjects(ownerId?: string | null) {
         latex: input.latex,
         sourceFilename: created.filename,
         sourceKind: input.sourceKind ?? 'unknown',
-        ownerId: input.ownerId ?? null,
+        ownerId: input.ownerId ?? resolvedOwnerId.value ?? null,
       }
       upsertProject(project)
       return project
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+        throw error
+      }
       const timestamp = nowIso()
       const localFallback: ProjectRecord = {
         id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -261,7 +330,7 @@ export function useProjects(ownerId?: string | null) {
         latex: input.latex,
         sourceFilename: filenameFromProjectName(input.sourceFilename ?? input.name),
         sourceKind: input.sourceKind ?? 'unknown',
-        ownerId: input.ownerId ?? null,
+        ownerId: input.ownerId ?? resolvedOwnerId.value ?? null,
       }
       upsertProject(localFallback)
       return localFallback
@@ -283,16 +352,24 @@ export function useProjects(ownerId?: string | null) {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+      const response = await authFetch(`${API_BASE}/${encodeURIComponent(id)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           filename: target.sourceFilename ?? filenameFromProjectName(target.name),
           latex,
         }),
       })
+      if (isAuthStatus(response.status)) {
+        throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
+      }
       return response.ok
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === AUTH_SESSION_EXPIRED_MESSAGE) {
+        throw error
+      }
       return false
     }
   }
@@ -302,9 +379,12 @@ export function useProjects(ownerId?: string | null) {
       return null
     }
 
-    const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}/files`)
+    const response = await authFetch(`${API_BASE}/${encodeURIComponent(id)}/files`)
     if (response.status === 404) {
       return null
+    }
+    if (isAuthStatus(response.status)) {
+      throw new Error(AUTH_SESSION_EXPIRED_MESSAGE)
     }
     if (!response.ok) {
       throw new Error('Failed to fetch project files')
@@ -328,9 +408,12 @@ export function useProjects(ownerId?: string | null) {
       return { ok: false, error: 'Remote project required for PDF compile.' }
     }
 
-    const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}/compile`, {
+    const response = await authFetch(`${API_BASE}/${encodeURIComponent(id)}/compile`, {
       method: 'POST',
     })
+    if (isAuthStatus(response.status)) {
+      return { ok: false, error: AUTH_SESSION_EXPIRED_MESSAGE }
+    }
     const payload = (await response.json()) as CompileResponse
 
     if (!response.ok || !payload.success || !payload.pdf_base64) {
